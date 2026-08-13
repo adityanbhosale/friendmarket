@@ -5,7 +5,7 @@ import { TRIPS, tripWindow } from "./markets";
 import { formatRange } from "./slate-table";
 
 export const metadata: Metadata = {
-  title: "Slates — friendmarket",
+  title: "Slates — Sidebar",
   description:
     "Mock trip slates: curated public prediction markets resolving inside one trip window, staked blind against each other.",
 };
@@ -19,7 +19,7 @@ export default function SlatesIndex() {
         <Shell>
           <div className="flex items-baseline justify-between gap-6 py-5">
             <Link href="/" className="type-wordmark font-medium hover:text-muted">
-              friendmarket
+              Sidebar
             </Link>
             <Nav current="slates" />
           </div>

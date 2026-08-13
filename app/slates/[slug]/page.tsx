@@ -14,10 +14,10 @@ export async function generateMetadata({
 }: PageProps<"/slates/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const trip = getTrip(slug);
-  if (!trip) return { title: "Slate — friendmarket" };
+  if (!trip) return { title: "Slate — Sidebar" };
 
   return {
-    title: `${trip.name} slate — friendmarket`,
+    title: `${trip.name} slate — Sidebar`,
     description: `Slate no. ${trip.no}: markets resolving during ${trip.destination}, staked blind.`,
   };
 }
@@ -36,7 +36,7 @@ export default async function SlatePage({ params }: PageProps<"/slates/[slug]">)
         <Shell>
           <div className="flex items-baseline justify-between gap-6 py-5">
             <Link href="/" className="type-wordmark font-medium hover:text-muted">
-              friendmarket
+              Sidebar
             </Link>
             <Nav current="slates" />
           </div>

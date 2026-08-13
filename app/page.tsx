@@ -81,7 +81,7 @@ function Masthead() {
     <div className="border-b border-rule">
       <Shell>
         <div className="flex items-baseline justify-between gap-6 py-5">
-          <span className="type-wordmark font-medium">friendmarket</span>
+          <span className="type-wordmark font-medium">Sidebar</span>
           <Nav />
         </div>
       </Shell>

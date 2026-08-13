@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Nav, Shell, SectionLabel } from "../shell";
 
 export const metadata: Metadata = {
-  title: "Rules — friendmarket",
+  title: "Rules — Sidebar",
   description:
     "The complete market structure specification: parimutuel pools, pricing, resolution, disputes, and settlement.",
 };
@@ -658,7 +658,7 @@ function Masthead() {
               href="/"
               className="type-wordmark font-medium hover:text-muted"
             >
-              ← Friendmarket
+              ← Sidebar
             </Link>
             <Nav current="rules" />
           </div>
