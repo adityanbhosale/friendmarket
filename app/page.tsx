@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { Shell, SectionLabel } from "./shell";
+import { Nav, Shell, SectionLabel } from "./shell";
 
 // Hardcoded demo market. No market logic anywhere — these numbers are props.
 // Fractional odds are the conventional approximations of the implied
@@ -83,9 +82,7 @@ function Masthead() {
       <Shell>
         <div className="flex items-baseline justify-between gap-6 py-5">
           <span className="type-wordmark font-medium">friendmarket</span>
-          <Link href="/docs" className="text-sm text-muted hover:text-foreground">
-            Rules
-          </Link>
+          <Nav />
         </div>
       </Shell>
     </div>
@@ -435,9 +432,7 @@ function Footer() {
     <footer>
       <Shell>
         <div className="flex flex-wrap items-baseline justify-between gap-4 py-8">
-          <Link href="/docs" className="text-sm text-muted hover:text-foreground">
-            Rules
-          </Link>
+          <Nav />
           <span className="text-sm text-muted">
             Points only. Settle your own Venmo beef.
           </span>

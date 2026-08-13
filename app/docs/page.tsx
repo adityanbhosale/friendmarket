@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Shell, SectionLabel } from "../shell";
+import { Nav, Shell, SectionLabel } from "../shell";
 
 export const metadata: Metadata = {
   title: "Rules — friendmarket",
@@ -451,7 +451,7 @@ function Masthead() {
             >
               ← Friendmarket
             </Link>
-            <span className="text-sm text-muted">Rules</span>
+            <Nav current="rules" />
           </div>
         </Shell>
       </div>
@@ -609,9 +609,7 @@ function DocsFooter() {
             are not redeemable, transferable, or an obligation of anyone.
           </p>
           <div className="mt-8 flex flex-wrap items-baseline justify-between gap-4">
-            <Link href="/" className="text-sm text-muted hover:text-foreground">
-              ← Friendmarket
-            </Link>
+            <Nav current="rules" />
             <span className="text-sm text-muted">
               Points only. Settle your own Venmo beef.
             </span>
