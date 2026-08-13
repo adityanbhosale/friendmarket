@@ -1,69 +1,424 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+import { Shell, SectionLabel } from "./shell";
+
+// Hardcoded demo market. No market logic anywhere — these numbers are props.
+// Fractional odds are the conventional approximations of the implied
+// percentages: 15/8 = 34.8%, 1/2 = 66.7%.
+const MARKET = {
+  id: "0007",
+  status: "Open",
+  tag: "CAMPING TRIP",
+  question: "Will [redacted] get rejected by 10+ girls on the camping trip?",
+  yes: 34,
+  no: 66,
+  yesOdds: "15/8",
+  noOdds: "1/2",
+  pool: 124,
+  bettors: 9,
+  closes: "Aug 29",
+  closesIn: "16d",
+  // YES drifting down from ~53% to 34% over the last week. Purely decorative.
+  spark: [
+    [0, 28],
+    [25, 24],
+    [50, 31],
+    [75, 22],
+    [100, 26],
+    [125, 18],
+    [150, 30],
+    [175, 27],
+    [200, 36],
+    [225, 32],
+    [250, 40],
+    [275, 37],
+    [300, 40],
+  ] as const,
+};
+
+const STEPS = [
+  {
+    n: "01",
+    title: "Propose a market",
+    body: "Anything with a yes-or-no answer and a date. If the group chat argued about it, it qualifies.",
+  },
+  {
+    n: "02",
+    title: "Stake into the pool",
+    body: "Pick a side, put points in at the current odds. Your stake moves the odds for whoever bets after you.",
+  },
+  {
+    n: "03",
+    title: "Pool pays the winners",
+    body: "At resolution the whole pool splits across the correct side, proportional to what each person staked.",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
+    <main className="flex-1">
+      <Masthead />
+      <Hero />
+      <MarketSection />
+      <HowItWorks />
+      <CountMeIn />
+      <Footer />
+    </main>
+  );
+}
+
+function Masthead() {
+  return (
+    <div className="border-b border-rule">
+      <Shell>
+        <div className="flex items-baseline justify-between gap-6 py-5">
+          <span className="type-wordmark font-medium">friendmarket</span>
+          <Link href="/docs" className="text-sm text-muted hover:text-foreground">
+            Rules
+          </Link>
+        </div>
+      </Shell>
+    </div>
+  );
+}
+
+function Hero() {
+  return (
+    <section className="border-b border-rule">
+      <Shell>
+        <div className="grid gap-x-12 gap-y-10 py-20 sm:py-28 md:grid-cols-12 lg:py-36">
+          <div className="md:col-span-4 md:col-start-9 md:row-start-1">
+            <span className="text-sm text-muted">Invite only</span>
+          </div>
+
+          <div className="md:col-span-7 md:col-start-1 md:row-start-1">
+            <h1 className="type-statement max-w-[20ch] text-balance">
+              A private prediction market for bets your group chat was already
+              making.
+            </h1>
+
             <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              href="#count-me-in"
+              className="mt-10 inline-flex h-11 items-center bg-foreground px-6 text-sm text-background transition-opacity hover:opacity-80"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              Count me in
+            </a>
+          </div>
+        </div>
+      </Shell>
+    </section>
+  );
+}
+
+function MarketSection() {
+  return (
+    <section className="border-b border-rule">
+      <Shell>
+        <div className="grid gap-x-12 gap-y-12 py-20 sm:py-24 lg:grid-cols-12 lg:py-32">
+          <div className="lg:col-span-4">
+            <SectionLabel>Live market</SectionLabel>
+            <h2 className="type-head mt-3 text-balance">
+              Someone already opened this one.
+            </h2>
+            <p className="measure mt-5 leading-relaxed text-muted">
+              Odds are just the pool ratio. Nobody is quoting you a price.
+            </p>
+          </div>
+
+          <div className="lg:col-span-7 lg:col-start-6">
+            <div className="max-w-[560px]">
+              <MarketTable />
+            </div>
+          </div>
+        </div>
+      </Shell>
+    </section>
+  );
+}
+
+function MarketTable() {
+  const {
+    yes,
+    no,
+    yesOdds,
+    noOdds,
+    pool,
+    bettors,
+    closes,
+    closesIn,
+    question,
+    tag,
+    id,
+    status,
+  } = MARKET;
+
+  return (
+    <div>
+      {/* A table from a working paper: rules top and bottom, hairlines within. */}
+      <article className="border-t border-b border-foreground">
+        <div className="flex items-baseline justify-between gap-4 border-b border-rule py-3 text-xs text-muted">
+          <span className="flex items-baseline gap-3">
+            <span className="font-mono tabular-nums">{id}</span>
+            <span>{status}</span>
+          </span>
+          <span>{tag}</span>
+        </div>
+
+        <div className="border-b border-rule py-5">
+          <h3 className="text-lg leading-snug font-medium text-balance sm:text-xl">
+            {question}
+          </h3>
+        </div>
+
+        {/* Sides are told apart by weight and underline, never by colour. */}
+        <SideRow side="Yes" odds={yesOdds} percent={yes} affirmative />
+        <SideRow side="No" odds={noOdds} percent={no} />
+
+        <div className="border-b border-rule py-5">
+          <div className="mb-4 text-xs text-muted">Movement</div>
+          <MovementLine />
+          <div className="mt-3 flex justify-between text-xs text-muted">
+            <span>7d ago</span>
+            <span>now</span>
+          </div>
+        </div>
+
+        <dl>
+          <StatRow label="Pool" value={`$${pool}`} />
+          <StatRow label="Bettors" value={String(bettors)} />
+          <StatRow label="Closes" value={`${closes} · ${closesIn} left`} last />
+        </dl>
+      </article>
+
+      {/* Table note */}
+      <p className="mt-3 text-xs text-muted">
+        Retain this portion. Stakes are in points and are not redeemable.
+      </p>
+    </div>
+  );
+}
+
+function SideRow({
+  side,
+  odds,
+  percent,
+  affirmative = false,
+}: {
+  side: string;
+  odds: string;
+  percent: number;
+  affirmative?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_5rem_4rem] items-baseline gap-x-4 border-b border-rule py-3">
+      <span
+        className={
+          affirmative
+            ? "font-semibold underline decoration-1 underline-offset-4"
+            : "font-normal"
+        }
+      >
+        {side}
+      </span>
+      <span className="text-right font-mono tabular-nums">{odds}</span>
+      <span className="text-right font-mono text-muted tabular-nums">
+        {percent}%
+      </span>
+    </div>
+  );
+}
+
+function MovementLine() {
+  const path = MARKET.spark.map(([x, y]) => `${x},${y}`).join(" ");
+
+  return (
+    <svg
+      viewBox="0 0 300 60"
+      preserveAspectRatio="none"
+      className="h-12 w-full sm:h-14"
+      aria-label="YES odds have drifted down over the past week"
+    >
+      <polyline
+        points={path}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        vectorEffect="non-scaling-stroke"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function StatRow({
+  label,
+  value,
+  last = false,
+}: {
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-baseline justify-between gap-4 py-2.5 ${
+        last ? "" : "border-b border-rule"
+      }`}
+    >
+      <dt className="text-muted">{label}</dt>
+      <dd className="font-mono tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+function HowItWorks() {
+  return (
+    <section className="border-b border-rule">
+      <Shell>
+        <div className="py-20 sm:py-24 lg:py-32">
+          <SectionLabel>How it works</SectionLabel>
+          <h2 className="type-head mt-3 mb-12 lg:mb-16">
+            Three steps. That&apos;s the whole product.
+          </h2>
+
+          <ol className="lg:grid lg:grid-cols-3">
+            {STEPS.map((step) => (
+              <li
+                key={step.n}
+                className="border-t border-rule py-8 lg:border-t-0 lg:border-l lg:border-rule lg:px-8 lg:py-0 lg:first:border-l-0 lg:first:pl-0"
+              >
+                <span className="font-mono text-sm text-muted tabular-nums">
+                  {step.n}
+                </span>
+                <h3 className="mt-4 font-medium">{step.title}</h3>
+                <p className="measure mt-2 leading-relaxed text-muted">
+                  {step.body}
+                </p>
+              </li>
+            ))}
+          </ol>
+
+          <p className="measure mt-14 leading-relaxed text-muted">
+            No cash-outs. No market makers. Odds are just the pool ratio — if
+            they look wrong, that&apos;s not a bug, that&apos;s your friends.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </Shell>
+    </section>
+  );
+}
+
+function CountMeIn() {
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">(
+    "idle",
+  );
+  const [position, setPosition] = useState<number | null>(null);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!name.trim() || status === "sending") return;
+
+    setStatus("sending");
+    setError("");
+
+    try {
+      const res = await fetch("/api/interest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error ?? "Something broke.");
+
+      setPosition(data.position);
+      setStatus("done");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something broke.");
+      setStatus("error");
+    }
+  }
+
+  return (
+    <section id="count-me-in" className="scroll-mt-8 border-b border-rule">
+      <Shell>
+        <div className="grid gap-x-12 gap-y-10 py-20 sm:py-24 lg:grid-cols-12 lg:items-start lg:py-32">
+          <div className="lg:col-span-4">
+            <SectionLabel>Count me in</SectionLabel>
+            <h2 className="type-head mt-3 text-balance">
+              Leave your name. We&apos;ll open the book when there are enough of
+              you.
+            </h2>
+          </div>
+
+          <div className="lg:col-span-6 lg:col-start-6">
+            {status === "done" && position !== null ? (
+              <div className="border-t border-b border-foreground py-6">
+                <p className="text-2xl font-medium">
+                  You&apos;re #{position} in.
+                </p>
+                <p className="mt-2 text-muted">
+                  Start thinking about which of your friends is the market.
+                </p>
+              </div>
+            ) : (
+              <form
+                onSubmit={handleSubmit}
+                className="flex flex-col gap-3 sm:flex-row"
+              >
+                <label htmlFor="name" className="sr-only">
+                  Your name
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                  maxLength={40}
+                  autoComplete="given-name"
+                  required
+                  className="h-11 flex-1 border border-rule bg-background px-4 text-base placeholder:text-muted focus:border-foreground focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={status === "sending" || !name.trim()}
+                  className="h-11 bg-foreground px-6 text-sm text-background transition-opacity hover:opacity-80 disabled:opacity-40"
+                >
+                  {status === "sending" ? "…" : "Count me in"}
+                </button>
+              </form>
+            )}
+
+            {status === "error" && (
+              <p className="mt-3 text-sm text-muted">{error}</p>
+            )}
+          </div>
         </div>
-      </main>
-    </div>
+      </Shell>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer>
+      <Shell>
+        <div className="flex flex-wrap items-baseline justify-between gap-4 py-8">
+          <Link href="/docs" className="text-sm text-muted hover:text-foreground">
+            Rules
+          </Link>
+          <span className="text-sm text-muted">
+            Points only. Settle your own Venmo beef.
+          </span>
+        </div>
+      </Shell>
+    </footer>
   );
 }

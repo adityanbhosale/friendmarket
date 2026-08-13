@@ -2,25 +2,57 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #111111;
+  --muted: #666666;
+  --rule: #e5e5e5;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains);
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-synthesis-weight: none;
+}
+
+/* Fluid measure with ~5vw outer margins, capped at 1600px so ultrawide
+   monitors don't get absurd line lengths. */
+.broadsheet {
+  width: 100%;
+  max-width: 1600px;
+  margin-inline: auto;
+  padding-inline: clamp(1.5rem, 5vw, 6rem);
+}
+
+/* Comfortable reading measure for running prose. */
+.measure {
+  max-width: 65ch;
+}
+
+/* Type scales with the viewport rather than stepping at breakpoints.
+   Large but plain: no display face, tight tracking, sentence case. */
+.type-wordmark {
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.type-statement {
+  font-size: clamp(1.75rem, 4vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.type-head {
+  font-size: clamp(1.375rem, 2.2vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
 }
