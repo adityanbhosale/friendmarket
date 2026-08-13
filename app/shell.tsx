@@ -11,6 +11,24 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
   return <span className="text-sm text-muted">{children}</span>;
 }
 
+/** Plain body-sized back link: secondary gray, underline only on hover. */
+export function BackLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="text-muted underline-offset-4 hover:text-foreground hover:underline"
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function Nav({ current }: { current?: "slates" | "rules" }) {
   return (
     <nav className="flex items-baseline gap-5 text-sm">
