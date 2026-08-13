@@ -13,12 +13,14 @@ const CONTENTS = [
   { n: "2", id: "pool", title: "The pool" },
   { n: "3", id: "pricing", title: "Pricing" },
   { n: "4", id: "sealed-seeding", title: "Sealed seeding" },
-  { n: "5", id: "no-maker", title: "Why there is no market maker" },
-  { n: "6", id: "matched-book", title: "Considered and rejected: matched book" },
-  { n: "7", id: "timing", title: "Timing" },
-  { n: "8", id: "resolution", title: "Resolution and disputes" },
-  { n: "9", id: "house-rules", title: "House rules" },
-  { n: "10", id: "settlement", title: "Settlement" },
+  { n: "5", id: "slates", title: "Slates" },
+  { n: "6", id: "sourcing", title: "Sourcing and selection" },
+  { n: "7", id: "no-maker", title: "Why there is no market maker" },
+  { n: "8", id: "matched-book", title: "Considered and rejected: matched book" },
+  { n: "9", id: "timing", title: "Timing" },
+  { n: "10", id: "resolution", title: "Resolution and disputes" },
+  { n: "11", id: "house-rules", title: "House rules" },
+  { n: "12", id: "settlement", title: "Settlement" },
 ];
 
 export default function Docs() {
@@ -221,7 +223,192 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="no-maker" n="5" title="Why there is no market maker">
+            <Section id="slates" n="5" title="Slates">
+              <P>
+                A slate is a bundle of markets the venue did not write. They are
+                sourced from a public prediction market, they share a trip
+                window and a leaderboard, and they are presented together. That
+                is the whole of the relationship.
+              </P>
+
+              <SubSection n="5.1" title="The coupling is presentational" />
+              <P>
+                Each market on a slate keeps its own independent parimutuel
+                pool, its own reveal, and its own settlement. Nothing multiplies
+                across markets. Being right on six of eight does not compound —
+                it means you were right in six separate pools and wrong in two.
+              </P>
+              <P>
+                This is worth stating plainly, because a slate looks like a
+                parlay and is not one. A parlay couples at the <em>payoff</em>{" "}
+                level: it pays on the joint outcome of every leg at once, so the
+                thing being priced is a single point in the joint outcome space
+                rather than each market on its own.
+              </P>
+              <P>That space is the problem.</P>
+
+              <Formula>joint outcomes = 2^n</Formula>
+
+              <Table caption="Joint outcome space by leg count">
+                <Row label="3 legs" value="8" />
+                <Row label="5 legs" value="32" />
+                <Row label="8 legs — a full slate" value="256" strong />
+              </Table>
+
+              <P>
+                Fifteen people cannot populate 256 pools. A parimutuel pool with
+                one staker on each side is not a market, it is a bet with extra
+                steps. So the venue does not run parlay pools, and a slate is
+                not one.
+              </P>
+              <P>
+                The parlay survives as the optional side pot: one n-leg parlay
+                per person into a single shared pool, longest surviving odds
+                takes it. One pool, one winner, no combinatorics.
+              </P>
+
+              <SubSection n="5.2" title="The trading phase" />
+              <P>
+                For external slates, sealed seeding is not the first phase. It
+                is the entire trading phase. The slate locks before the trip
+                window opens, odds reveal at lock, and no open trading follows.
+              </P>
+              <P>
+                The reason is that the reference prices move publicly, in real
+                time, on a venue anybody can read. Section 4 sealed the window
+                so nobody could follow anybody. Leaving an open phase after the
+                reveal would hand a late staker something better than a peek at
+                the pool — it would hand them the public price after it had
+                already moved, which is free-riding on information that arrived
+                only after everybody else had committed.
+              </P>
+              <P>So for slate markets the two timestamps collapse:</P>
+
+              <Formula>reveal = close &lt; resolution</Formula>
+
+              <P>
+                The strict ordering in section 9 governs markets the group
+                writes itself. Slate markets relax it to the above, and nothing
+                else about section 9 changes.
+              </P>
+
+              <SubSection n="5.3" title="Reference prices" />
+              <P>
+                The consensus column on a slate is the external market’s traded
+                price at snapshot, displayed as an implied probability.
+              </P>
+              <P>
+                It is information. It is not a quote. Nobody here will trade
+                with you at that number, and the venue’s own odds remain what
+                they have always been — the ratio of the two pools, per section
+                3. The external price is there to be disagreed with.
+              </P>
+              <P>
+                Which is the actual game. On a slate you are not trying to
+                predict the world better than a liquid public market; you will
+                usually lose that. You are reading which of your friends is
+                wrong about where that market is wrong.
+              </P>
+            </Section>
+
+            <Section id="sourcing" n="6" title="Sourcing and selection">
+              <P>
+                The methodology, written down so a slate can be audited rather
+                than trusted.
+              </P>
+
+              <SubSection n="6.1" title="Source" />
+              <P>
+                Polymarket’s public Gamma API, read-only and keyless. No orders
+                are ever placed and no account exists. The external venue serves
+                two functions and no others: price reference, and resolution
+                oracle.
+              </P>
+
+              <SubSection n="6.2" title="The pool" />
+              <P>
+                Top-volume active markets, fetched in pages of one hundred and
+                merged into a single pool shared by every slate.
+              </P>
+              <Table caption="Pool construction">
+                <Row label="Pages read" value="6 × 100 = 600" />
+                <Row label="Ordering" value="volume, descending" />
+                <Row label="Page failure" value="tolerated, pool degrades" strong />
+                <Row label="Cache" value="revalidated hourly" />
+                <Row label="Scope" value="one read, all slates" />
+              </Table>
+              <P>
+                Per-page failure tolerance matters more than it sounds: one
+                failed page thins the pool rather than emptying the board.
+              </P>
+
+              <SubSection n="6.3" title="Filters" />
+              <P>
+                Two-outcome markets only — on the source venue that means either
+                yes/no or a head-to-head between two named sides, as described
+                in section 2.
+              </P>
+              <Table caption="Probability band">
+                <Row label="National fill" value="5% – 95%" />
+                <Row label="Regional match" value="3% – 97%" strong />
+              </Table>
+              <P>
+                A market sitting at 99% leaves nothing to disagree about, and a
+                slate of near-certainties is a reading exercise rather than a
+                game. Regional matches get the wider band because the
+                head-to-heads are the draw.
+              </P>
+              <P>
+                Near-duplicate markets are deduplicated. Public venues list
+                price ladders — the same question at four strike prices — and
+                without this step a slate fills up with one question wearing
+                four hats.
+              </P>
+
+              <SubSection n="6.4" title="Regional weighting" />
+              <P>
+                Each trip defines a keyword set: teams, cities, and state
+                figures for the destination. Matching runs over the question
+                text <em>and</em> the outcome names, because a market titled
+                after one side still concerns the other.
+              </P>
+              <P>
+                Matching uses word-boundary patterns rather than substring
+                search. This is not fastidiousness: substring matching put a
+                Mexican football club on a Texas slate by way of “cruz”, and put
+                the San Francisco Giants on a New York one. A regional tag that
+                is wrong is worse than no tag at all.
+              </P>
+              <Table caption="Slate composition">
+                <Row label="Regional slots" value="up to 4" strong />
+                <Row label="Remainder" value="category round-robin" />
+                <Row label="In-window resolution" value="preferred, not required" />
+              </Table>
+              <P>
+                In-window resolution is a preference because the pool is
+                volume-ranked and clusters in the near term; requiring it would
+                starve a window three weeks out. Where regional coverage is
+                thin, the slate says so on its face. It never fakes the tag.
+              </P>
+
+              <SubSection n="6.5" title="Failure, and one piece of staleness" />
+              <P>
+                If the source is unreachable, a static sample slate renders in
+                its place carrying a notice that says exactly that. A slate
+                never renders empty.
+              </P>
+              <P>
+                One thing this demo does not do. The displayed consensus is a
+                snapshot and may be up to an hour stale under the cache policy
+                above. A production slate would freeze every reference price at
+                a single canonical lock timestamp, so that every participant is
+                shown the same number and settlement can be audited against it.
+                This one does not. It is a demo, and that is the first gap you
+                would close.
+              </P>
+            </Section>
+
+            <Section id="no-maker" n="7" title="Why there is no market maker">
               <P>
                 The obvious objection: real prediction markets run automated
                 market makers. Why not run one here?
@@ -255,7 +442,7 @@ export default function Docs() {
                 not run one.
               </P>
 
-              <SubSection n="5.1" title="Seeding mechanics, for the record" />
+              <SubSection n="7.1" title="Seeding mechanics, for the record" />
               <P>
                 Written down in case the venue ever grows enough to need one, so
                 nobody has to rediscover it:
@@ -277,7 +464,7 @@ export default function Docs() {
 
             <Section
               id="matched-book"
-              n="6"
+              n="8"
               title="Considered and rejected: matched book"
             >
               <P>
@@ -325,7 +512,7 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="timing" n="7" title="Timing">
+            <Section id="timing" n="9" title="Timing">
               <P>
                 Every market carries three timestamps, all fixed at proposal and
                 none adjustable afterwards:
@@ -356,7 +543,7 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="resolution" n="8" title="Resolution and disputes">
+            <Section id="resolution" n="10" title="Resolution and disputes">
               <P>
                 The proposer writes the resolution criteria at proposal time,
                 before any points are in. Criteria must be specific enough that
@@ -387,9 +574,23 @@ export default function Docs() {
                 if the criteria are ambiguous, the event is cancelled, or the
                 subject declines to cooperate.
               </P>
+
+              <SubSection n="10.1" title="Slate markets resolve elsewhere" />
+              <P>
+                A market on a slate resolves to whatever the source market
+                officially resolves to. The oracle is external, which takes the
+                proposer out of adjudication entirely: there is no local
+                judgment to make, so there is nothing to dispute and no jury
+                path. The clock above governs markets the group writes itself.
+              </P>
+              <P>
+                If the source market voids, or becomes unresolvable, the
+                corresponding pool voids with it and refunds every stake under
+                the same void rule.
+              </P>
             </Section>
 
-            <Section id="house-rules" n="9" title="House rules">
+            <Section id="house-rules" n="11" title="House rules">
               <P>
                 <strong>The subject may bet on themselves</strong>, including on
                 their own failure. This is a feature and it is disclosed as one:
@@ -421,7 +622,7 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="settlement" n="10" title="Settlement" last>
+            <Section id="settlement" n="12" title="Settlement" last>
               <P>
                 Points are the unit of account. The venue keeps a running net
                 ledger per person across all resolved markets — what you are up,
