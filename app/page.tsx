@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Logo } from "./logo";
-import { Nav, Shell, SectionLabel } from "./shell";
+import { Masthead, Nav, Shell, SectionLabel } from "./shell";
 
 // Hardcoded demo market. No market logic anywhere — these numbers are props.
 // Fractional odds are the conventional approximations of the implied
@@ -74,22 +73,6 @@ export default function Home() {
       <CountMeIn />
       <Footer />
     </main>
-  );
-}
-
-function Masthead() {
-  return (
-    <div className="border-b border-rule">
-      <Shell>
-        <div className="flex items-baseline justify-between gap-6 py-5">
-          <span className="type-wordmark flex items-center gap-2 font-medium">
-            <Logo className="h-[0.95em] w-auto shrink-0" />
-            Sidebar
-          </span>
-          <Nav />
-        </div>
-      </Shell>
-    </div>
   );
 }
 

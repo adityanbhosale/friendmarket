@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Logo } from "../logo";
-import { Nav, Shell } from "../shell";
+import { Masthead, Nav, Shell } from "../shell";
 import { TRIPS, tripWindow } from "./markets";
 import { formatRange } from "./slate-table";
 
@@ -16,20 +15,7 @@ export default function SlatesIndex() {
 
   return (
     <main className="flex-1">
-      <div className="border-b border-rule">
-        <Shell>
-          <div className="flex items-baseline justify-between gap-6 py-5">
-            <Link
-              href="/"
-              className="type-wordmark flex items-center gap-2 font-medium hover:text-muted"
-            >
-              <Logo className="h-[0.95em] w-auto shrink-0" />
-              Sidebar
-            </Link>
-            <Nav current="slates" />
-          </div>
-        </Shell>
-      </div>
+      <Masthead up="/" current="slates" />
 
       <Shell>
         <div className="py-16 sm:py-20 lg:py-24">

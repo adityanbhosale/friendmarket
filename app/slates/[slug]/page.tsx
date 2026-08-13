@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Logo } from "../../logo";
-import { Nav, Shell } from "../../shell";
+import { Masthead, Nav, Shell } from "../../shell";
 import { TRIPS, getSlate, getTrip, tripWindow } from "../markets";
 import { SlateTable, formatRange } from "../slate-table";
 
@@ -33,31 +31,11 @@ export default async function SlatePage({ params }: PageProps<"/slates/[slug]">)
 
   return (
     <main className="flex-1">
-      <div className="border-b border-rule">
-        <Shell>
-          <div className="flex items-baseline justify-between gap-6 py-5">
-            <Link
-              href="/"
-              className="type-wordmark flex items-center gap-2 font-medium hover:text-muted"
-            >
-              <Logo className="h-[0.95em] w-auto shrink-0" />
-              Sidebar
-            </Link>
-            <Nav current="slates" />
-          </div>
-        </Shell>
-      </div>
+      <Masthead up="/slates" current="slates" />
 
       <Shell>
         <div className="py-16 sm:py-20 lg:py-24">
-          <Link
-            href="/slates"
-            className="text-sm text-muted hover:text-foreground"
-          >
-            ← All slates
-          </Link>
-
-          <h1 className="type-statement mt-6 max-w-[16ch] text-balance">
+          <h1 className="type-statement max-w-[16ch] text-balance">
             {trip.name}
           </h1>
 

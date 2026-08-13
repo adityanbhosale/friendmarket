@@ -2,6 +2,7 @@
 // client landing page and the static /docs and /slates routes.
 
 import Link from "next/link";
+import { Logo } from "./logo";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return <div className="broadsheet">{children}</div>;
@@ -9,24 +10,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return <span className="text-sm text-muted">{children}</span>;
-}
-
-/** Plain body-sized back link: secondary gray, underline only on hover. */
-export function BackLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className="text-muted underline-offset-4 hover:text-foreground hover:underline"
-    >
-      {children}
-    </Link>
-  );
 }
 
 export function Nav({ current }: { current?: "slates" | "rules" }) {
@@ -62,5 +45,39 @@ function NavLink({
     <Link href={href} className="text-muted hover:text-foreground">
       {children}
     </Link>
+  );
+}
+
+/**
+ * Header lockup. `up` is the destination one level up the path; passing it
+ * turns the wordmark into "← Sidebar" and makes the arrow + wordmark a single
+ * link. The home page passes nothing and gets a plain, unlinked wordmark.
+ * The mark itself is not part of the link.
+ */
+export function Masthead({
+  up,
+  current,
+}: {
+  up?: string;
+  current?: "slates" | "rules";
+}) {
+  return (
+    <div className="border-b border-rule">
+      <Shell>
+        <div className="flex items-baseline justify-between gap-6 py-5">
+          <span className="type-wordmark flex items-center gap-2 font-medium">
+            <Logo className="h-[0.95em] w-auto shrink-0" />
+            {up ? (
+              <Link href={up} className="hover:text-muted">
+                ← Sidebar
+              </Link>
+            ) : (
+              "Sidebar"
+            )}
+          </span>
+          <Nav current={current} />
+        </div>
+      </Shell>
+    </div>
   );
 }

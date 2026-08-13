@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Logo } from "../logo";
-import { Nav, Shell, SectionLabel } from "../shell";
+import { Masthead, Nav, Shell, SectionLabel } from "../shell";
 
 export const metadata: Metadata = {
   title: "Rules — Sidebar",
@@ -27,7 +25,7 @@ const CONTENTS = [
 export default function Docs() {
   return (
     <main className="flex-1">
-      <Masthead />
+      <DocsHeader />
 
       <Shell>
         <div className="py-16 lg:grid lg:grid-cols-12 lg:gap-x-12 lg:py-24">
@@ -649,23 +647,10 @@ export default function Docs() {
   );
 }
 
-function Masthead() {
+function DocsHeader() {
   return (
     <>
-      <div className="border-b border-rule">
-        <Shell>
-          <div className="flex items-baseline justify-between gap-6 py-5">
-            <Link
-              href="/"
-              className="type-wordmark flex items-center gap-2 font-medium hover:text-muted"
-            >
-              <Logo className="h-[0.95em] w-auto shrink-0" />
-              ← Sidebar
-            </Link>
-            <Nav current="rules" />
-          </div>
-        </Shell>
-      </div>
+      <Masthead up="/" current="rules" />
 
       <section className="border-b border-rule">
         <Shell>
