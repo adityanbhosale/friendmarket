@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Logo } from "../logo";
 import { Nav, Shell } from "../shell";
 import { TRIPS, tripWindow } from "./markets";
 import { formatRange } from "./slate-table";
@@ -18,7 +19,11 @@ export default function SlatesIndex() {
       <div className="border-b border-rule">
         <Shell>
           <div className="flex items-baseline justify-between gap-6 py-5">
-            <Link href="/" className="type-wordmark font-medium hover:text-muted">
+            <Link
+              href="/"
+              className="type-wordmark flex items-center gap-2 font-medium hover:text-muted"
+            >
+              <Logo className="h-[0.95em] w-auto shrink-0" />
               Sidebar
             </Link>
             <Nav current="slates" />

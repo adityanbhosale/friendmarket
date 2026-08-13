@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Logo } from "../logo";
 import { Nav, Shell, SectionLabel } from "../shell";
 
 export const metadata: Metadata = {
@@ -656,8 +657,9 @@ function Masthead() {
           <div className="flex items-baseline justify-between gap-6 py-5">
             <Link
               href="/"
-              className="type-wordmark font-medium hover:text-muted"
+              className="type-wordmark flex items-center gap-2 font-medium hover:text-muted"
             >
+              <Logo className="h-[0.95em] w-auto shrink-0" />
               ← Sidebar
             </Link>
             <Nav current="rules" />

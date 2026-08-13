@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Logo } from "./logo";
 import { Nav, Shell, SectionLabel } from "./shell";
 
 // Hardcoded demo market. No market logic anywhere — these numbers are props.
@@ -81,7 +82,10 @@ function Masthead() {
     <div className="border-b border-rule">
       <Shell>
         <div className="flex items-baseline justify-between gap-6 py-5">
-          <span className="type-wordmark font-medium">Sidebar</span>
+          <span className="type-wordmark flex items-center gap-2 font-medium">
+            <Logo className="h-[0.95em] w-auto shrink-0" />
+            Sidebar
+          </span>
           <Nav />
         </div>
       </Shell>
