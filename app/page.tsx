@@ -46,15 +46,23 @@ const STEPS = [
   },
   {
     n: "02",
-    title: "Stake into the pool",
-    body: "Pick a side, put points in at the current odds. Your stake moves the odds for whoever bets after you.",
+    title: "Seed it blind",
+    body: "Stake either side with no prices shown. Odds don't exist yet, so there is nothing to follow and nothing to anchor to.",
   },
   {
     n: "03",
+    title: "Odds reveal",
+    body: "The window shuts, the pools open up, and staking continues at the pool ratio until the market closes.",
+  },
+  {
+    n: "04",
     title: "Pool pays the winners",
     body: "At resolution the whole pool splits across the correct side, proportional to what each person staked.",
   },
 ];
+
+// Lifecycle states, in order. The example market sits in the middle one.
+const LIFECYCLE = ["Seeding", "Open", "Closed"] as const;
 
 export default function Home() {
   return (
@@ -159,11 +167,27 @@ function MarketTable() {
       {/* A table from a working paper: rules top and bottom, hairlines within. */}
       <article className="border-t border-b border-foreground">
         <div className="flex items-baseline justify-between gap-4 border-b border-rule py-3 text-xs text-muted">
-          <span className="flex items-baseline gap-3">
-            <span className="font-mono tabular-nums">{id}</span>
-            <span>{status}</span>
-          </span>
+          <span className="font-mono tabular-nums">{id}</span>
           <span>{tag}</span>
+        </div>
+
+        {/* Lifecycle. Current state carries weight and an underline, never colour. */}
+        <div className="flex flex-wrap items-baseline gap-2 border-b border-rule py-3 text-xs">
+          {LIFECYCLE.map((state, i) => (
+            <span key={state} className="flex items-baseline gap-2">
+              {i > 0 && <span className="text-muted">→</span>}
+              <span
+                className={
+                  state === status
+                    ? "font-semibold underline decoration-1 underline-offset-4"
+                    : "text-muted"
+                }
+                aria-current={state === status ? "true" : undefined}
+              >
+                {state}
+              </span>
+            </span>
+          ))}
         </div>
 
         <div className="border-b border-rule py-5">
@@ -284,7 +308,7 @@ function HowItWorks() {
             Three steps. That&apos;s the whole product.
           </h2>
 
-          <ol className="lg:grid lg:grid-cols-3">
+          <ol className="sm:grid sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-4 lg:gap-x-0">
             {STEPS.map((step) => (
               <li
                 key={step.n}

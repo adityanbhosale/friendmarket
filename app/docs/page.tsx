@@ -12,12 +12,13 @@ const CONTENTS = [
   { n: "1", id: "principles", title: "Principles" },
   { n: "2", id: "pool", title: "The pool" },
   { n: "3", id: "pricing", title: "Pricing" },
-  { n: "4", id: "no-maker", title: "Why there is no market maker" },
-  { n: "5", id: "matched-book", title: "Considered and rejected: matched book" },
-  { n: "6", id: "timing", title: "Timing" },
-  { n: "7", id: "resolution", title: "Resolution and disputes" },
-  { n: "8", id: "house-rules", title: "House rules" },
-  { n: "9", id: "settlement", title: "Settlement" },
+  { n: "4", id: "sealed-seeding", title: "Sealed seeding" },
+  { n: "5", id: "no-maker", title: "Why there is no market maker" },
+  { n: "6", id: "matched-book", title: "Considered and rejected: matched book" },
+  { n: "7", id: "timing", title: "Timing" },
+  { n: "8", id: "resolution", title: "Resolution and disputes" },
+  { n: "9", id: "house-rules", title: "House rules" },
+  { n: "10", id: "settlement", title: "Settlement" },
 ];
 
 export default function Docs() {
@@ -92,6 +93,12 @@ export default function Docs() {
                 the entire point of it, and it is the reason a market is worth
                 reading at all.
               </P>
+              <P>
+                The formula needs both sides to exist. If either pool is zero at
+                close — everybody agreed, or nobody took the other side — there
+                is no losing stake to distribute and no ratio to distribute it
+                by. The market is voided and all stakes are refunded in full.
+              </P>
             </Section>
 
             <Section id="pricing" n="3" title="Pricing">
@@ -121,7 +128,92 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="no-maker" n="4" title="Why there is no market maker">
+            <Section id="sealed-seeding" n="4" title="Sealed seeding">
+              <P>
+                Every market runs through three trading states. The first of
+                them is blind.
+              </P>
+
+              <SubSection n="4.1" title="The three states" />
+              <Table caption="Lifecycle">
+                <Row label="Seeding" value="stakes accepted, nothing shown" />
+                <Row label="Open" value="pools revealed, odds published" />
+                <Row label="Closed / Resolved" value="no stakes, outcome run" />
+              </Table>
+              <P>
+                <strong>Seeding</strong> is a fixed window that starts the
+                moment the market is proposed. The proposer sets its length.
+                During the window anyone may stake on either side, but no
+                prices, pool sizes, side totals, or individual positions are
+                displayed to anyone. A stake placed during seeding is
+                irrevocable on the same terms as any other stake, with one
+                difference: you may increase it before the window shuts.
+              </P>
+              <P>
+                <strong>Open</strong> begins when the seeding window ends. The
+                pools are revealed, the implied odds are published as the pool
+                ratio, and staking continues at visible odds until close exactly
+                as specified above.
+              </P>
+              <P>
+                <strong>Closed</strong> and <strong>resolved</strong> are
+                unchanged. No stakes are accepted after close, and the outcome
+                runs at resolution.
+              </P>
+
+              <SubSection n="4.2" title="Why the window is sealed" />
+              <P>
+                In a venue of fifteen people, the first number anybody sees is
+                the number everybody else reasons from. Publish an opening ratio
+                and it anchors the entire market behind it — not because your
+                friends are credulous, but because a posted price is evidence,
+                and in a small group it is most of the evidence available.
+              </P>
+              <P>
+                Worse, an open ratio makes the first stakers pay for the
+                privilege of being first. Under a pool, a stake moves the ratio
+                against the person placing it. Early on there is no depth to
+                absorb that, so the people doing the actual price discovery move
+                the price furthest against themselves and hand the improved
+                number to whoever arrives next. They subsidize the market.
+              </P>
+              <P>
+                Sealing the window collects independent priors instead of a
+                cascade. Everyone commits against their own read of the
+                situation rather than against each other&apos;s, and what
+                appears at the reveal is fifteen opinions rather than one
+                opinion and fourteen echoes.
+              </P>
+
+              <SubSection n="4.3" title="Why seed rather than wait" />
+              <P>
+                Because the mispricing is captured at the reveal, and after that
+                it is gone. If you seed and the crowd lands somewhere else, the
+                reveal moves the ratio to your advantage and you are holding
+                stake that was placed at a price nobody else could see. If you
+                wait, you are taking the number the seeders produced.
+              </P>
+              <P>
+                That is the whole trade. Seeding is when you set the price.
+                Open is when you take it.
+              </P>
+
+              <SubSection n="4.4" title="What is visible during seeding" />
+              <P>
+                One number: how many participants have staked. Not which side
+                they took, not how much, not in what order.
+              </P>
+              <P>
+                The proposer has no privileged view. They see the participant
+                count and nothing else, on the same terms as everybody else,
+                including in markets they proposed and staked in themselves.
+                There is no administrative screen behind this — the totals are
+                not shown to anyone because a market that can be peeked at is
+                not sealed, it is merely inconvenient.
+              </P>
+            </Section>
+
+            <Section id="no-maker" n="5" title="Why there is no market maker">
               <P>
                 The obvious objection: real prediction markets run automated
                 market makers. Why not run one here?
@@ -155,7 +247,7 @@ export default function Docs() {
                 not run one.
               </P>
 
-              <SubSection n="4.1" title="Seeding mechanics, for the record" />
+              <SubSection n="5.1" title="Seeding mechanics, for the record" />
               <P>
                 Written down in case the venue ever grows enough to need one, so
                 nobody has to rediscover it:
@@ -177,7 +269,7 @@ export default function Docs() {
 
             <Section
               id="matched-book"
-              n="5"
+              n="6"
               title="Considered and rejected: matched book"
             >
               <P>
@@ -225,15 +317,21 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="timing" n="6" title="Timing">
+            <Section id="timing" n="7" title="Timing">
               <P>
-                Every market carries two timestamps, both fixed at proposal and
-                neither adjustable afterwards:
+                Every market carries three timestamps, all fixed at proposal and
+                none adjustable afterwards:
               </P>
               <Table caption="Fixed at proposal">
+                <Row label="Reveal" value="seeding ends, pools revealed" />
                 <Row label="Close" value="no stakes accepted after" />
                 <Row label="Resolution" value="outcome determined, payout runs" />
               </Table>
+              <P>
+                The ordering is fixed and the interface will not accept a market
+                that violates it:
+              </P>
+              <Formula>reveal &lt; close &lt; resolution</Formula>
               <P>
                 Close must precede the earliest moment the outcome could become
                 knowable. The proposer sets it and common sense checks it. This
@@ -250,7 +348,7 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="resolution" n="7" title="Resolution and disputes">
+            <Section id="resolution" n="8" title="Resolution and disputes">
               <P>
                 The proposer writes the resolution criteria at proposal time,
                 before any points are in. Criteria must be specific enough that
@@ -283,7 +381,7 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="house-rules" n="8" title="House rules">
+            <Section id="house-rules" n="9" title="House rules">
               <P>
                 <strong>The subject may bet on themselves</strong>, including on
                 their own failure. This is a feature and it is disclosed as one:
@@ -315,7 +413,7 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="settlement" n="9" title="Settlement" last>
+            <Section id="settlement" n="10" title="Settlement" last>
               <P>
                 Points are the unit of account. The venue keeps a running net
                 ledger per person across all resolved markets — what you are up,
