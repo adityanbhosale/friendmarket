@@ -62,6 +62,14 @@ export default function Docs() {
                 other side. Once it is in, it is in until resolution.
               </P>
               <P>
+                A market has one pool per side. Often those sides are YES and
+                NO, but a market may instead be a head-to-head between two
+                named outcomes — one team against another — in which case the
+                pools carry those names. The mechanics do not change: one pool
+                per side, and YES/NO is simply the case where the two sides
+                happen to be called yes and no.
+              </P>
+              <P>
                 At resolution the entire combined pool — both sides — is
                 distributed to the winning side, pro-rata by stake.
               </P>

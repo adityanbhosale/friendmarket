@@ -1,5 +1,5 @@
 // Shared layout primitives. No hooks, no state — safe to render from both the
-// client landing page and the static /docs and /card routes.
+// client landing page and the static /docs and /slates routes.
 
 import Link from "next/link";
 
@@ -11,11 +11,11 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
   return <span className="text-sm text-muted">{children}</span>;
 }
 
-export function Nav({ current }: { current?: "card" | "rules" }) {
+export function Nav({ current }: { current?: "slates" | "rules" }) {
   return (
     <nav className="flex items-baseline gap-5 text-sm">
-      <NavLink href="/card" active={current === "card"}>
-        Card
+      <NavLink href="/slates" active={current === "slates"}>
+        Slates
       </NavLink>
       <NavLink href="/docs" active={current === "rules"}>
         Rules
