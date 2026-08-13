@@ -10,15 +10,15 @@ const MARKET = {
   id: "0007",
   status: "Open",
   tag: "CAMPING TRIP",
-  question: "Will [redacted] get rejected by 10+ girls on the camping trip?",
+  question: "Will [redacted] get to the office before 10am tomorrow?",
   yes: 34,
   no: 66,
   yesOdds: "15/8",
   noOdds: "1/2",
   pool: 124,
   bettors: 9,
-  closes: "Aug 29",
-  closesIn: "16d",
+  closes: "Aug 14",
+  closesIn: "1d",
   // YES drifting down from ~53% to 34% over the last week. Purely decorative.
   spark: [
     [0, 28],
