@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --import tsx --test tests/*.test.ts",
+    "imessage:test": "npm --prefix experiments/imessage-transport test",
+    "imessage:agent:dry": "npm --prefix experiments/imessage-transport run agent:dry",
+    "imessage:agent": "npm --prefix experiments/imessage-transport run agent",
     "check": "npm run lint && npm test && npm run build -- --webpack"
   },
   "dependencies": {

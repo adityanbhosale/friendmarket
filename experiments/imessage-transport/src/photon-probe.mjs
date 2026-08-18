@@ -6,11 +6,11 @@ import {
   isTaggedTestTraffic,
   normalizePhotonMessage,
 } from "./transport-core.mjs";
+import { settleMessageRouting } from "./photon-routing.mjs";
 
 const mode = process.argv[2];
 const dryRun = process.env.SIDEBAR_POC_DRY_RUN === "1";
 const recordEvidence = createEvidenceRecorder();
-const ROUTING_RETRY_DELAYS_MS = [100, 250, 500];
 
 await main();
 
@@ -131,31 +131,4 @@ async function runWatcher(sdk) {
     process.on("SIGINT", stop);
     process.on("SIGTERM", stop);
   });
-}
-
-async function settleMessageRouting(sdk, message) {
-  if (message.chatId && message.participant) return message;
-
-  const createdAt =
-    message.createdAt instanceof Date
-      ? message.createdAt
-      : new Date(message.createdAt);
-
-  for (const delayMs of ROUTING_RETRY_DELAYS_MS) {
-    await delay(delayMs);
-    const candidates = await sdk.getMessages({
-      since: new Date(createdAt.getTime() - 1_000),
-      before: new Date(createdAt.getTime() + 1_000),
-      service: "iMessage",
-      limit: 50,
-    });
-    const settled = candidates.find((candidate) => candidate.id === message.id);
-    if (settled?.chatId && settled.participant) return settled;
-  }
-
-  return message;
-}
-
-function delay(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

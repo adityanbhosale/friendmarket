@@ -4,9 +4,10 @@ This isolated experiment tests the native iMessage group behavior that the
 Blooio free trial could not validate. It uses Photon's open-source
 `@photon-ai/imessage-kit` against the Messages database on this Mac.
 
-It does not connect to Sidebar, Supabase, an LLM, or production. The Mac only
-needs to remain online while this proof is running; this is not the intended
-production architecture.
+The transport probe remains isolated, but this directory now also contains a
+local Sidebar agent. The agent reads and writes through the same Supabase views
+and atomic RPCs as the web app. The Mac only needs to remain online while this
+proof is running; this is not the intended production architecture.
 
 ## What it proves
 
@@ -104,3 +105,94 @@ senderId, text, receivedAt, kind, service, isFromMe
 Only `receiveMessage` and `sendReply(conversationId, text)` behavior should move
 into the eventual Sidebar integration. Market state remains deterministic and
 provider-independent.
+
+## Run the Sidebar agent
+
+The local agent currently supports the functionality already present in the
+Sidebar backend:
+
+- create and list markets;
+- show status, odds, stakes, total pot, and time remaining;
+- place a Yes or No bet;
+- resolve a market as Yes, No, or Void; and
+- show the resulting payouts.
+
+Market-specific membership, market deletion, and random adjudicator selection
+are not in the current database model. The agent says so instead of pretending
+to perform them. Native iMessage group membership is never changed.
+
+### 1. Bind one iMessage group to one Sidebar group
+
+Bindings are explicit for the proof of concept. This prevents an iMessage
+sender or conversation from selecting arbitrary Sidebar UUIDs in a message.
+
+Use `npm run smoke` or `.local/evidence.jsonl` to obtain the 12-character
+conversation and sender hashes. In the Supabase SQL editor, use this read-only
+query to find the matching Sidebar group and member UUIDs:
+
+```sql
+select g.id as group_id, g.name as group_name,
+       u.id as user_id, u.name as user_name
+from groups g
+join group_members gm on gm.group_id = g.id
+join users u on u.id = gm.user_id
+order by g.name, u.name;
+```
+
+Put the resulting values in the root `.env.local`, which is gitignored:
+
+```dotenv
+SIDEBAR_IMESSAGE_CONVERSATION_HASH=a26cb18099e4
+SIDEBAR_GROUP_ID=00000000-0000-4000-8000-000000000000
+SIDEBAR_IMESSAGE_USER_MAP={"34023a9ca954":"11111111-1111-4111-8111-111111111111"}
+SIDEBAR_GROUP_TIMEZONE=America/New_York
+```
+
+Each sender hash maps to an existing member UUID. Add another JSON property for
+each friend who should be able to act. Multiple groups can instead use the
+`SIDEBAR_IMESSAGE_BINDINGS` JSON-array form documented in the root
+`.env.example`.
+
+### 2. Natural-language interpretation
+
+Common phrasing is parsed locally and costs nothing:
+
+```text
+Sidebar, show markets
+What are the odds on market 3?
+Sidebar, put 40 points on yes in market 3
+Sidebar, create a market: Will Dan be late? closes in 2 hours
+Sidebar, resolve market 3 as yes
+```
+
+An OpenAI model is an optional fallback only for explicit Sidebar requests that
+the local parser cannot understand. To enable it, set `OPENAI_API_KEY` in the
+root `.env.local` or export it in the launching shell. Do not put a key in this
+repository or a chat message. `OPENAI_INTENT_MODEL` defaults to
+`gpt-5.4-nano`. Ordinary group chatter is discarded before any API call, and
+the model returns a strict structured intent; application validation and
+Supabase RPCs remain the authority for every mutation.
+
+### 3. Verify without writes, then run
+
+Keep Messages open and run this from the experiment directory in a Terminal
+with Full Disk Access:
+
+```zsh
+npm test
+npm run agent:dry
+```
+
+In dry-run mode, reads are real but create/bet/resolve operations only reply
+with what they would do. After checking the correct group and sender mapping:
+
+```zsh
+npm run agent
+```
+
+Stop with Control-C. The process logs only redacted event, conversation, and
+sender hashes—not message bodies or credentials.
+
+This local binding is suitable for validating the product loop, not a public
+beta. A hosted transport and a database-backed identity-linking flow are still
+required before removing the Mac dependency.

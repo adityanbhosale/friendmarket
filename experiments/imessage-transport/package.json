@@ -7,7 +7,9 @@
     "test": "node --test",
     "smoke": "node src/photon-probe.mjs --smoke",
     "watch": "node src/photon-probe.mjs --watch",
-    "watch:dry": "SIDEBAR_POC_DRY_RUN=1 node src/photon-probe.mjs --watch"
+    "watch:dry": "SIDEBAR_POC_DRY_RUN=1 node src/photon-probe.mjs --watch",
+    "agent": "node --env-file-if-exists=../../.env.local src/photon-agent.mjs",
+    "agent:dry": "SIDEBAR_AGENT_DRY_RUN=1 node --env-file-if-exists=../../.env.local src/photon-agent.mjs"
   },
   "dependencies": {
     "@photon-ai/imessage-kit": "3.0.0"
