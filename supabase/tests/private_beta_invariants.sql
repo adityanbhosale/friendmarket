@@ -9,6 +9,7 @@ declare
   v_group uuid;
   v_owner uuid;
   v_member uuid;
+  v_imessage_member uuid;
   v_market uuid;
   v_yes uuid;
   v_no uuid;
@@ -40,6 +41,23 @@ begin
       and sender_hash = repeat('e', 64) and user_id = v_owner
   ) then
     raise exception 'optional iMessage binding was not created';
+  end if;
+
+  insert into public.imessage_setup_tokens (
+    token_hash, conversation_hash, sender_hash, expires_at
+  ) values (
+    repeat('f', 64), repeat('1', 64), repeat('2', 64),
+    now() + interval '15 minutes'
+  );
+  v_imessage_member := public.join_group_member_imessage(
+    repeat('f', 64), v_group, 'iMessage member', repeat('3', 64), 1000
+  );
+  if not exists (
+    select 1 from public.imessage_identities
+    where conversation_hash = repeat('1', 64)
+      and sender_hash = repeat('2', 64) and user_id = v_imessage_member
+  ) then
+    raise exception 'unbound iMessage conversation did not join an existing group';
   end if;
 
   if public.points_balance(v_group, v_owner) <> 1000

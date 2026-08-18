@@ -48,7 +48,22 @@ export default async function ImessageSetupPage({
       />
     );
   } else {
-    content = <CreateGroupForm imessageToken={live.token} />;
+    content = (
+      <div className="grid gap-12">
+        <section>
+          <h2 className="mb-5 text-sm font-medium">Open a new Sidebar group</h2>
+          <CreateGroupForm imessageToken={live.token} />
+        </section>
+        <section className="border-t border-rule pt-10">
+          <h2 className="mb-2 text-sm font-medium">Connect an existing group</h2>
+          <p className="measure mb-5 text-sm leading-relaxed text-muted">
+            Enter its group ID and shared password. This creates your member
+            identity and connects this iMessage conversation in one step.
+          </p>
+          <JoinForm imessageToken={live.token} />
+        </section>
+      </div>
+    );
   }
 
   return (

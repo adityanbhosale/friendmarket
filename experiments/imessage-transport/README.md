@@ -147,6 +147,7 @@ shared group. The page then:
 
 - connects the conversation to the Sidebar group in the current web session;
 - lets a new user create a Sidebar group if the conversation has none; or
+- accepts an existing group ID and password when the browser is not signed in;
 - lets another participant privately enter the existing group password and
   create their own member identity.
 

@@ -460,7 +460,7 @@ begin
   if not found then
     raise exception 'that iMessage setup link is invalid or expired' using errcode = '22023';
   end if;
-  if v_setup_group is distinct from p_group_id then
+  if v_setup_group is not null and v_setup_group is distinct from p_group_id then
     raise exception 'that iMessage setup link belongs to another Sidebar group'
       using errcode = '42501';
   end if;
