@@ -10,6 +10,7 @@ import {
 const mode = process.argv[2];
 const dryRun = process.env.SIDEBAR_POC_DRY_RUN === "1";
 const recordEvidence = createEvidenceRecorder();
+const ROUTING_RETRY_DELAYS_MS = [100, 250, 500];
 
 await main();
 
@@ -72,8 +73,9 @@ async function runSmoke(sdk) {
 async function runWatcher(sdk) {
   const processMessage = createMessageProcessor({
     sendReply: async (conversationId, text) => {
-      if (dryRun) return;
+      if (dryRun) return false;
       await sdk.send({ to: conversationId, text });
+      return true;
     },
     recordEvidence,
   });
@@ -81,7 +83,8 @@ async function runWatcher(sdk) {
   await sdk.startWatching({
     onGroupMessage: async (message) => {
       if (!isTaggedTestTraffic(message.text ?? "")) return;
-      const envelope = normalizePhotonMessage(message);
+      const settledMessage = await settleMessageRouting(sdk, message);
+      const envelope = normalizePhotonMessage(settledMessage);
       await processMessage(envelope);
     },
     onFromMeMessage: async (message) => {
@@ -128,4 +131,31 @@ async function runWatcher(sdk) {
     process.on("SIGINT", stop);
     process.on("SIGTERM", stop);
   });
+}
+
+async function settleMessageRouting(sdk, message) {
+  if (message.chatId && message.participant) return message;
+
+  const createdAt =
+    message.createdAt instanceof Date
+      ? message.createdAt
+      : new Date(message.createdAt);
+
+  for (const delayMs of ROUTING_RETRY_DELAYS_MS) {
+    await delay(delayMs);
+    const candidates = await sdk.getMessages({
+      since: new Date(createdAt.getTime() - 1_000),
+      before: new Date(createdAt.getTime() + 1_000),
+      service: "iMessage",
+      limit: 50,
+    });
+    const settled = candidates.find((candidate) => candidate.id === message.id);
+    if (settled?.chatId && settled.participant) return settled;
+  }
+
+  return message;
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

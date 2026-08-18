@@ -96,6 +96,18 @@ test("deduplicates events and always replies to the received conversation", asyn
   assert.equal(evidence[1].reason, "duplicate_event");
 });
 
+test("labels dry-run command evidence without claiming a message was sent", async () => {
+  const evidence = [];
+  const processMessage = createMessageProcessor({
+    sendReply: async () => false,
+    recordEvidence: async (entry) => evidence.push(entry),
+  });
+
+  await processMessage(normalizePhotonMessage(groupMessage()));
+
+  assert.equal(evidence[0].result, "would_reply");
+});
+
 test("redacted fingerprints are stable and do not expose identifiers", () => {
   const value = "+15550000001";
   const hash = fingerprint(value);

@@ -65,7 +65,8 @@ G1-B-01 odds
 Only the last two should be classified as commands. The watcher discards all
 untagged traffic before processing, so unrelated conversations are not recorded.
 Evidence is appended to `.local/evidence.jsonl`; identifiers are SHA-256
-fingerprints and message bodies are not persisted.
+fingerprints and message bodies are not persisted. Dry-run commands are recorded
+as `would_reply`; no message is sent.
 
 After confirming the correct group and sender hashes, start reply mode:
 

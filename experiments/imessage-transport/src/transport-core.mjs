@@ -67,9 +67,14 @@ export function createMessageProcessor({ sendReply, recordEvidence }) {
     }
 
     try {
-      await sendReply(envelope.conversationId, decision.replyText);
+      const sent = await sendReply(envelope.conversationId, decision.replyText);
       await recordEvidence(
-        evidenceFor(envelope, "replied", null, decision.correlationTag),
+        evidenceFor(
+          envelope,
+          sent === false ? "would_reply" : "replied",
+          null,
+          decision.correlationTag,
+        ),
       );
       return decision;
     } catch (error) {
