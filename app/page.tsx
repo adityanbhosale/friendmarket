@@ -88,8 +88,8 @@ function Hero() {
 
           <div className="md:col-span-7 md:col-start-1 md:row-start-1">
             <h1 className="type-statement max-w-[20ch] text-balance">
-              A private prediction market for bets your group chat was already
-              making.
+              Prediction markets on the bets your group chat was already talking
+              about.
             </h1>
 
             <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">

@@ -17,11 +17,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Sidebar",
   description:
-    "A private prediction market for bets your group chat was already making.",
+    "Prediction markets on the bets your group chat was already talking about.",
   openGraph: {
     title: "Sidebar",
     description:
-      "A private prediction market for bets your group chat was already making.",
+      "Prediction markets on the bets your group chat was already talking about.",
     type: "website",
   },
 };
