@@ -34,6 +34,9 @@ Status values are `untested`, `pass`, `fail`, and `blocked`.
 - Status is blocked rather than failed until a direct-message control and the
   Blooio webhook delivery log distinguish group ingestion from subscription
   configuration.
+- The direct-message control also produced no webhook request after three
+  receiver checks. This rules out a group-only delivery problem but does not yet
+  distinguish failed Blooio ingestion from a webhook subscription problem.
 
 ## Decision
 
