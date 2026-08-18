@@ -6,7 +6,7 @@ Status values are `untested`, `pass`, `fail`, and `blocked`.
 | --- | --- | --- | --- |
 | Trial sender identity and type | untested |  |  |
 | Manual add to native iMessage group | untested |  |  |
-| Stable native group/chat ID | untested |  |  |
+| Stable native group/chat ID | untested | Direct chat ID was stable across five control events | Native group still required |
 | Individual sender attribution | untested |  |  |
 | Participant information | untested |  |  |
 | Reply into exact native group | untested |  |  |
@@ -22,6 +22,9 @@ Status values are `untested`, `pass`, `fail`, and `blocked`.
 | API-created native group | untested |  |  |
 | Trial-to-paid identity continuity | untested |  |  |
 | 48-hour completeness and latency | untested |  |  |
+| Direct inbound after outbound route | pass | One `message.received` event with a distinct message ID | Cold inbound remains unsupported or unprovisioned on trial |
+| Direct lifecycle identifiers | pass | Five unique event IDs; four outbound states shared one message ID, chat ID, and channel ID | Process lifecycle deterministically by event type |
+| Webhook signature header | pass | Signature was present on all five Blooio deliveries | Cryptographic verification awaits secure secret injection |
 
 ## Run log
 
@@ -46,6 +49,15 @@ Status values are `untested`, `pass`, `fail`, and `blocked`.
   separately advertises a dedicated number, real-time inbound webhooks, and the
   ability to reply after the user messages first. Purchase is on hold until
   Blooio enables equivalent trial validation or explains the trial routing rule.
+- After Blooio sent the first direct message, the recipient's reply appeared in
+  Blooio and the webhook. The outbound message produced `queued`, `sent`,
+  `delivered`, and `read` lifecycle events; the reply produced one `received`
+  event. This is expected lifecycle fan-out, not duplicate message delivery.
+- All five deliveries had unique event IDs and signatures. The four outbound
+  states shared one message ID, chat ID, and channel ID; the inbound reply used a
+  new message ID in the same chat and correctly reversed sender and recipient.
+- The observed trial behavior is therefore outbound-first. It still does not
+  validate the cold-inbound behavior required from the paid Inbound plan.
 
 ## Decision
 

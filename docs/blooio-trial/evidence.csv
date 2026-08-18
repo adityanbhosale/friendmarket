@@ -2,6 +2,7 @@ test_id,scheduled_at_et,phone_sent_at_et,webhook_received_at_et,api_accepted_at_
 INV-01,,,,,,,,,,,,,,,pending,,Record plan sender channel and expiry
 DM-A-01,2026-08-18,,,,,,,DM-A,,,A,,inbound,,,blocked,Direct message sent but no Blooio request reached verified receiver after three checks
 DM-A-01-R,,,,,,,,DM-A,,,BOT,,outbound,,,pending,Direct reply baseline
+DM-A-02,2026-08-18,,2026-08-18 15:03:27 ET,,,,,DM-A,,,A,,inbound,200,1,pass,Outbound-first control produced one received event after four lifecycle events for the outbound message
 G1-A-01,2026-08-18,,,,,,,G1,,,A,,inbound,,,blocked,Group message sent but no Blooio request reached verified receiver; check dashboard delivery log and direct inbound
 G1-B-01,,,,,,,,G1,,,B,,inbound,,,pending,Verify individual sender
 G1-A-01-R,,,,,,,,G1,,,BOT,,outbound,,,pending,Exact group reply
