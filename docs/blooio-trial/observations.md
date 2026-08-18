@@ -37,10 +37,20 @@ Status values are `untested`, `pass`, `fail`, and `blocked`.
 - The direct-message control also produced no webhook request after three
   receiver checks. This rules out a group-only delivery problem but does not yet
   distinguish failed Blooio ingestion from a webhook subscription problem.
+- The direct message and native-group message are also absent from Blooio's own
+  Chats/Messages dashboard, while the receiver continues to accept synthetic
+  requests. The failure is therefore upstream of webhook delivery: the trial
+  identity is not ingesting or routing cold inbound traffic to this organization.
+- Blooio's public trial description promises 20 messages and full API access but
+  does not explicitly promise a dedicated cold-inbound line. Its Inbound plan
+  separately advertises a dedicated number, real-time inbound webhooks, and the
+  ability to reply after the user messages first. Purchase is on hold until
+  Blooio enables equivalent trial validation or explains the trial routing rule.
 
 ## Decision
 
-Current recommendation: **no-go pending trial evidence**.
+Current recommendation: **hold; do not purchase until cold inbound is enabled
+for the trial or demonstrated on the exact Inbound configuration**.
 
 Final recommendation:
 

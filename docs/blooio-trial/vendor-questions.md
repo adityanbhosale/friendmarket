@@ -31,3 +31,8 @@ Dedicated where behavior differs.
     be rebalanced without users recreating them?
 14. Which webhook signing, retry, replay, and delivery guarantees are contractual
     rather than beta behavior?
+15. Does the free-trial identity accept a brand-new inbound conversation, or
+    must the organization/API key send outbound first to establish routing on a
+    shared pool?
+16. Can you provision a temporary dedicated Inbound line during the trial so we
+    can validate the advertised user-first flow before purchasing?
