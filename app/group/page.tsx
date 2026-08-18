@@ -11,6 +11,7 @@ import {
   STATE_LABEL,
 } from "../lib/market-data";
 import { signOut } from "../lib/actions";
+import { RecoveryCodeForm } from "./recovery-code-form";
 
 export const metadata: Metadata = { title: "Your group — Sidebar" };
 
@@ -67,6 +68,8 @@ export default async function GroupPage() {
               </p>
             )}
 
+            <RecoveryCodeForm hasCode={Boolean(user.recovery_code_hash)} />
+
             <form action={signOut}>
               <button
                 type="submit"
@@ -118,7 +121,7 @@ export default async function GroupPage() {
                           {totals?.participants ?? 0}{" "}
                           {totals?.participants === 1 ? "bettor" : "bettors"}
                         </span>
-                        {/* The view returns no number until reveal (007);
+                        {/* The view returns no number until reveal (009);
                             this only picks the words for its absence. */}
                         <span className="font-mono tabular-nums">
                           {poolLabel(totals)}

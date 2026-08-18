@@ -1,3 +1,5 @@
+import "server-only";
+
 // Server-only Supabase access.
 //
 // Everything here runs under the secret key, which carries a BYPASSRLS role.
@@ -130,6 +132,10 @@ export async function count(table: string, query: Query = {}): Promise<number> {
     },
     cache: "no-store",
   });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new DbError(`${res.status} count ${table}: ${body}`, res.status, body);
+  }
   const range = res.headers.get("content-range"); // "0-0/57"
   const total = range?.split("/")[1];
   return total && total !== "*" ? Number(total) : 0;

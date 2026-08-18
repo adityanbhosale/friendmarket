@@ -19,7 +19,7 @@
 -- stake_count pre-reveal, "9 bettors" is what makes an empty board look alive,
 -- and a count of people tells you nothing about the size of anyone's position.
 --
--- Run in the Supabase SQL editor.
+-- Run after 008 in the Supabase SQL editor.
 
 begin;
 
@@ -84,7 +84,8 @@ comment on view public.market_pools is
 -- ---------------------------------------------------------------------------
 -- A dropped view takes its grants with it, so these have to be re-stated or
 -- the recreated views would fall back to whatever the defaults allow.
-revoke all on public.market_totals from anon, authenticated;
-revoke all on public.market_pools  from anon, authenticated;
+revoke all on public.market_totals from public, anon, authenticated;
+revoke all on public.market_pools  from public, anon, authenticated;
+grant select on public.market_totals, public.market_pools to service_role;
 
 commit;
