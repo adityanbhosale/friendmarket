@@ -159,11 +159,16 @@ Common phrasing is parsed locally and costs nothing:
 
 ```text
 Sidebar, show markets
-What are the odds on market 3?
+Sidebar, what are the odds on market 3?
 Sidebar, put 40 points on yes in market 3
 Sidebar, create a market: Will Dan be late? closes in 2 hours
 Sidebar, resolve market 3 as yes
 ```
+
+Every request must begin with `Sidebar`, `@Sidebar`, or `Hey Sidebar`. Even an
+otherwise clear market instruction is ignored without that prefix, so ordinary
+group conversation cannot accidentally invoke parsing, an API call, or a
+database action.
 
 An OpenAI model is an optional fallback only for explicit Sidebar requests that
 the local parser cannot understand. To enable it, set `OPENAI_API_KEY` in the

@@ -7,9 +7,13 @@ import {
   parseNaturalLanguageIntent,
 } from "../src/intent-parser.mjs";
 
-test("invokes only explicit mentions and clear market requests", () => {
+test("invokes only messages that begin by naming Sidebar", () => {
   assert.equal(isAgentInvocation("sidebar what are the odds on market 2?"), true);
-  assert.equal(isAgentInvocation("put 40 on yes in market 3"), true);
+  assert.equal(isAgentInvocation("@Sidebar, put 40 on yes in market 3"), true);
+  assert.equal(isAgentInvocation("hey sidebar: show markets"), true);
+  assert.equal(isAgentInvocation("put 40 on yes in market 3"), false);
+  assert.equal(isAgentInvocation("what are the odds on market 2?"), false);
+  assert.equal(isAgentInvocation("I mentioned Sidebar in conversation"), false);
   assert.equal(isAgentInvocation("I bet Dan is late again"), false);
   assert.equal(isAgentInvocation("ordinary group chatter"), false);
 });
@@ -75,6 +79,20 @@ test("does not call OpenAI for ordinary chatter", async () => {
     fetchImpl: async () => {
       called = true;
       throw new Error("unexpected");
+    },
+  });
+  assert.equal(result, null);
+  assert.equal(called, false);
+});
+
+test("does not call OpenAI for an unprefixed market instruction", async () => {
+  let called = false;
+  const result = await parseNaturalLanguageIntent({
+    text: "put 40 points on yes in market 3",
+    apiKey: "test-key",
+    fetchImpl: async () => {
+      called = true;
+      throw new Error("should not call");
     },
   });
   assert.equal(result, null);

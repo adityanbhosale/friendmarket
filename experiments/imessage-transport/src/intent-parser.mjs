@@ -1,5 +1,4 @@
 const BOT_PREFIX = /^\s*(?:hey\s+)?@?sidebar\s*[:,\-]?\s*/i;
-const CLEAR_DIRECT_REQUEST = /^\s*(?:(?:show|list)\s+(?:the\s+)?(?:markets?|odds|payouts?)|(?:create|open)\s+(?:a\s+)?market\b|(?:bet|stake|put)\s+\d+\b|(?:resolve|adjudicate)\s+(?:market\s*)?#?\d+\b|(?:what(?:'s|\s+is|\s+are)\s+(?:the\s+)?(?:odds|pot|payouts?)|how\s+(?:much\s+)?time\b))/i;
 
 const ACTIONS = new Set([
   "help",
@@ -12,7 +11,7 @@ const ACTIONS = new Set([
 ]);
 
 export function isAgentInvocation(text) {
-  return BOT_PREFIX.test(text) || CLEAR_DIRECT_REQUEST.test(text);
+  return BOT_PREFIX.test(text);
 }
 
 export function parseDeterministicIntent(text, { now = new Date() } = {}) {
