@@ -59,6 +59,12 @@ export function createSidebarClient({
     request(`/${table}${queryString({ select: "*", ...query })}`);
   const selectOne = async (table, query = {}) =>
     (await select(table, { ...query, limit: 1 }))[0] ?? null;
+  const insert = (table, row) =>
+    request(`/${table}`, {
+      method: "POST",
+      body: JSON.stringify(row),
+      prefer: "return=minimal",
+    });
   const rpc = (name, args) =>
     request(`/rpc/${name}`, { method: "POST", body: JSON.stringify(args) });
 
@@ -69,6 +75,39 @@ export function createSidebarClient({
     });
     if (!membership) throw new Error("That iMessage sender is not a member of this Sidebar group.");
     return membership;
+  }
+
+  async function resolveImessageBinding(conversationHash, senderHash) {
+    const conversation = await selectOne("imessage_conversations", {
+      conversation_hash: `eq.${conversationHash}`,
+    });
+    if (!conversation) return { status: "unbound_group" };
+    const identity = await selectOne("imessage_identities", {
+      conversation_hash: `eq.${conversationHash}`,
+      sender_hash: `eq.${senderHash}`,
+    });
+    if (!identity) return { status: "unbound_sender", groupId: conversation.group_id };
+    return {
+      status: "bound",
+      groupId: conversation.group_id,
+      userId: identity.user_id,
+    };
+  }
+
+  async function createImessageSetup({
+    tokenHash,
+    conversationHash,
+    senderHash,
+    groupId = null,
+    expiresAt,
+  }) {
+    await insert("imessage_setup_tokens", {
+      token_hash: tokenHash,
+      conversation_hash: conversationHash,
+      sender_hash: senderHash,
+      group_id: groupId,
+      expires_at: expiresAt,
+    });
   }
 
   async function listMarkets(groupId) {
@@ -183,11 +222,13 @@ export function createSidebarClient({
   }
 
   return {
+    createImessageSetup,
     getMarketByNumber,
     listMarkets,
     openMarket,
     placeBet,
     requireMembership,
+    resolveImessageBinding,
     resolveMarket,
   };
 }

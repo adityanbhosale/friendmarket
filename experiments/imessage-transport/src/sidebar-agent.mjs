@@ -1,4 +1,4 @@
-import { parseNaturalLanguageIntent } from "./intent-parser.mjs";
+import { isStartRequest, parseNaturalLanguageIntent } from "./intent-parser.mjs";
 import { SidebarDbError } from "./sidebar-client.mjs";
 import { fingerprint } from "./transport-core.mjs";
 
@@ -8,6 +8,7 @@ export function createSidebarAgent({
   parseIntent = parseNaturalLanguageIntent,
   now = () => new Date(),
   timezone = process.env.SIDEBAR_GROUP_TIMEZONE ?? "America/New_York",
+  issueSetupLink,
   dryRun = false,
 } = {}) {
   if (!client || !resolveBinding) throw new Error("Sidebar agent needs a client and binding resolver.");
@@ -16,13 +17,38 @@ export function createSidebarAgent({
   return async function handleMessage(envelope) {
     const conversationHash = fingerprint(envelope.conversationId);
     const senderHash = fingerprint(envelope.senderId);
-    const binding = resolveBinding(conversationHash, senderHash);
+    const binding = await resolveBinding(conversationHash, senderHash, {
+      conversationId: envelope.conversationId,
+      senderId: envelope.senderId,
+    });
+
+    if (isStartRequest(envelope.text)) {
+      if (binding.status === "bound") {
+        return "This conversation and your iMessage identity are already connected to Sidebar. Send “Sidebar, help” to see what I can do.";
+      }
+      if (!issueSetupLink) {
+        return "iMessage setup is not configured on this Sidebar agent yet.";
+      }
+      if (dryRun) {
+        return "Would create a private, 15-minute Sidebar setup link for this iMessage identity.";
+      }
+      try {
+        await issueSetupLink({
+          conversationId: envelope.conversationId,
+          senderId: envelope.senderId,
+          groupId: binding.status === "unbound_sender" ? binding.groupId : null,
+        });
+        return "I sent you a one-time Sidebar setup link directly. It expires in 15 minutes.";
+      } catch (error) {
+        return `I couldn't start setup: ${safeErrorMessage(error)}`;
+      }
+    }
 
     if (binding.status === "unbound_group") {
-      return "This iMessage group is not linked to a Sidebar group yet. Add its conversation hash to your local binding configuration.";
+      return "This iMessage group is not connected to Sidebar. Send “Sidebar, start” to create or connect a group.";
     }
     if (binding.status === "unbound_sender") {
-      return "I recognize this group, but your iMessage identity is not linked to a Sidebar member yet.";
+      return "I recognize this group, but your iMessage identity is not connected. Send “Sidebar, start” for a private setup link.";
     }
 
     try {

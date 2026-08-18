@@ -24,6 +24,7 @@ Apply not-yet-run files from `migrations/` in numeric order:
 | `005_resolve_after_close.sql` | Reject settlement before close |
 | `006_private_beta_integrity.sql` | Strict native timing, fully sealed views, reject settlement before `resolve_at` |
 | `007_recovery_and_atomic_entry.sql` | Recovery codes and atomic group creation/joining |
+| `008_optional_imessage_links.sql` | Optional iMessage bindings and expiring browser setup links |
 
 Migration 006 intentionally aborts if existing native markets violate
 `reveal_at < close_at < resolve_at`. Repair those rows explicitly before retrying;

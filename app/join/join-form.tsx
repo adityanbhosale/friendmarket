@@ -8,7 +8,13 @@ import { RecoveryCodeNotice } from "../recovery-code-notice";
 const INPUT =
   "h-11 w-full border border-rule bg-background px-4 text-base placeholder:text-muted focus:border-foreground focus:outline-none";
 
-export function JoinForm({ linkId }: { linkId?: string }) {
+export function JoinForm({
+  linkId,
+  imessageToken,
+}: {
+  linkId?: string;
+  imessageToken?: string;
+}) {
   const [state, action, pending] = useActionState<FormState, FormData>(
     joinGroup,
     {},
@@ -20,6 +26,9 @@ export function JoinForm({ linkId }: { linkId?: string }) {
 
   return (
     <form action={action} className="max-w-[420px]">
+      {imessageToken && (
+        <input type="hidden" name="imessage_token" value={imessageToken} />
+      )}
       <div className="border-t border-b border-foreground">
         {linkId ? (
           <input type="hidden" name="link_id" value={linkId} />

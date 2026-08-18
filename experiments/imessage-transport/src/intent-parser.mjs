@@ -14,6 +14,10 @@ export function isAgentInvocation(text) {
   return BOT_PREFIX.test(text);
 }
 
+export function isStartRequest(text) {
+  return BOT_PREFIX.test(text) && /^start\s*[.!?]*$/i.test(stripBotPrefix(text).trim());
+}
+
 export function parseDeterministicIntent(text, { now = new Date() } = {}) {
   const request = stripBotPrefix(text).trim();
   if (!request) return unknown("What would you like Sidebar to do?");

@@ -26,6 +26,10 @@ import {
   hashRecoveryCode,
   normalizeRecoveryCode,
 } from "./recovery-code";
+import {
+  hashImessageSetupToken,
+  normalizeImessageSetupToken,
+} from "./imessage-token";
 
 // A shared group password travels through a group chat and is guessable by
 // anyone holding the link. Throttling is what stands between that and an
@@ -39,6 +43,7 @@ export type FormState = {
   error?: string;
   recoveryCode?: string;
   groupId?: string;
+  imessageLinked?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -98,6 +103,10 @@ async function createGroupImpl(
   }
 
   const password_hash = await hashPassword(password);
+  const imessageToken = normalizeImessageSetupToken(formData.get("imessage_token"));
+  if (formData.has("imessage_token") && !imessageToken) {
+    return { error: "That iMessage setup link is invalid or expired." };
+  }
 
   // The RPC makes group, owner, membership and allocation one transaction.
   // Retry the generated credentials on the vanishingly unlikely unique clash.
@@ -109,16 +118,24 @@ async function createGroupImpl(
     recoveryCode = generateRecoveryCode();
     const normalizedCode = normalizeRecoveryCode(recoveryCode)!;
     try {
-      created = await rpc<CreatedGroup>("create_group_with_owner", {
-        p_group_name: groupName,
-        p_link_id: linkId,
-        p_password_hash: password_hash,
-        p_user_name: name,
-        p_recovery_code_hash: hashRecoveryCode(normalizedCode),
-        p_starting_points: STARTING_POINTS,
-      });
+      created = await rpc<CreatedGroup>(
+        imessageToken
+          ? "create_group_with_owner_imessage"
+          : "create_group_with_owner",
+        {
+          ...(imessageToken
+            ? { p_token_hash: hashImessageSetupToken(imessageToken) }
+            : {}),
+          p_group_name: groupName,
+          p_link_id: linkId,
+          p_password_hash: password_hash,
+          p_user_name: name,
+          p_recovery_code_hash: hashRecoveryCode(normalizedCode),
+          p_starting_points: STARTING_POINTS,
+        },
+      );
     } catch (err) {
-      if (!(err instanceof DbError && err.isConflict)) throw err;
+      if (!(err instanceof DbError && isGeneratedCredentialConflict(err))) throw err;
     }
   }
   if (!created) {
@@ -157,7 +174,11 @@ async function joinGroupImpl(
   const linkId = normalizeGroupId(formData.get("link_id"));
   const password = String(formData.get("password") ?? "");
   const name = String(formData.get("name") ?? "").trim();
+  const imessageToken = normalizeImessageSetupToken(formData.get("imessage_token"));
 
+  if (formData.has("imessage_token") && !imessageToken) {
+    return { error: "That iMessage setup link is invalid or expired." };
+  }
   if (!linkId || !password || !name) {
     return { error: "Group ID, password, and name are all required." };
   }
@@ -207,14 +228,20 @@ async function joinGroupImpl(
     recoveryCode = generateRecoveryCode();
     const normalizedCode = normalizeRecoveryCode(recoveryCode)!;
     try {
-      userId = await rpc<string>("join_group_member", {
-        p_group_id: group.id,
-        p_user_name: name,
-        p_recovery_code_hash: hashRecoveryCode(normalizedCode),
-        p_starting_points: STARTING_POINTS,
-      });
+      userId = await rpc<string>(
+        imessageToken ? "join_group_member_imessage" : "join_group_member",
+        {
+          ...(imessageToken
+            ? { p_token_hash: hashImessageSetupToken(imessageToken) }
+            : {}),
+          p_group_id: group.id,
+          p_user_name: name,
+          p_recovery_code_hash: hashRecoveryCode(normalizedCode),
+          p_starting_points: STARTING_POINTS,
+        },
+      );
     } catch (err) {
-      if (!(err instanceof DbError && err.isConflict)) throw err;
+      if (!(err instanceof DbError && isGeneratedCredentialConflict(err))) throw err;
     }
   }
   if (!userId) return { error: "Couldn't create your membership. Try again." };
@@ -321,6 +348,31 @@ export async function generateNewRecoveryCode(
 
   revalidatePath("/group");
   return { recoveryCode, groupId: membership.group.link_id };
+}
+
+export async function linkCurrentGroupToImessage(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const membership = await currentMembership();
+  if (!membership) {
+    return { error: "Sign in to the Sidebar group you want to link." };
+  }
+  const token = normalizeImessageSetupToken(formData.get("imessage_token"));
+  if (!token) return { error: "That iMessage setup link is invalid or expired." };
+
+  try {
+    await rpc<void>("consume_imessage_setup", {
+      p_token_hash: hashImessageSetupToken(token),
+      p_group_id: membership.group.id,
+      p_user_id: membership.user.id,
+    });
+  } catch (error) {
+    return {
+      error: dbMessage(error, "Couldn't link that iMessage conversation."),
+    };
+  }
+  return { imessageLinked: true };
 }
 
 export async function signOut(): Promise<void> {
@@ -476,5 +528,13 @@ export async function joinGroup(
   return reportingDbErrors(
     () => joinGroupImpl(prev, formData),
     "Couldn't join that group.",
+  );
+}
+
+function isGeneratedCredentialConflict(error: DbError): boolean {
+  return (
+    error.isConflict &&
+    (error.body.includes("groups_link_id_key") ||
+      error.body.includes("users_recovery_code_hash_uniq"))
   );
 }

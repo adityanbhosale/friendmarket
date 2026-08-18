@@ -116,7 +116,75 @@ test("unbound identities cannot reach the database", async () => {
     resolveBinding: () => ({ status: "unbound_sender", groupId: GROUP_ID }),
   });
   const result = await agent({ conversationId: "chat", senderId: "sender", text: "Sidebar help" });
-  assert.match(result, /not linked to a Sidebar member/);
+  assert.match(result, /not connected.*Sidebar, start/);
+});
+
+test("Sidebar start issues a setup link before any market access", async () => {
+  const setupCalls = [];
+  const agent = createSidebarAgent({
+    client: {
+      requireMembership: async () => assert.fail("database should not be called"),
+      listMarkets: async () => assert.fail("database should not be called"),
+    },
+    resolveBinding: async () => ({ status: "unbound_group" }),
+    issueSetupLink: async (input) => {
+      setupCalls.push(input);
+    },
+  });
+
+  const result = await agent({
+    conversationId: "chat-1",
+    senderId: "+15550000001",
+    text: "Sidebar, start",
+  });
+
+  assert.deepEqual(setupCalls, [
+    { conversationId: "chat-1", senderId: "+15550000001", groupId: null },
+  ]);
+  assert.match(result, /sent you a one-time Sidebar setup link directly/);
+  assert.match(result, /expires in 15 minutes/);
+});
+
+test("Sidebar start attaches an unbound sender to the conversation's group", async () => {
+  const setupCalls = [];
+  const agent = createSidebarAgent({
+    client: {},
+    resolveBinding: async () => ({ status: "unbound_sender", groupId: GROUP_ID }),
+    issueSetupLink: async (input) => {
+      setupCalls.push(input);
+    },
+  });
+  await agent({ conversationId: "chat-1", senderId: "sender-2", text: "@Sidebar start" });
+  assert.equal(setupCalls[0].groupId, GROUP_ID);
+});
+
+test("Sidebar start does not issue another link for an existing binding", async () => {
+  let issued = false;
+  const agent = createSidebarAgent({
+    client: {},
+    resolveBinding: async () => ({ status: "bound", groupId: GROUP_ID, userId: USER_ID }),
+    issueSetupLink: async () => {
+      issued = true;
+    },
+  });
+  const result = await agent({ conversationId: "chat-1", senderId: "sender-1", text: "Sidebar start" });
+  assert.equal(issued, false);
+  assert.match(result, /already connected/);
+});
+
+test("dry-run Sidebar start does not persist a setup token", async () => {
+  let issued = false;
+  const agent = createSidebarAgent({
+    client: {},
+    resolveBinding: async () => ({ status: "unbound_group" }),
+    issueSetupLink: async () => {
+      issued = true;
+    },
+    dryRun: true,
+  });
+  const result = await agent({ conversationId: "chat-1", senderId: "sender-1", text: "Sidebar start" });
+  assert.equal(issued, false);
+  assert.match(result, /Would create/);
 });
 
 test("formats final payouts after deterministic resolution", async () => {

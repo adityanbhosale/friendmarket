@@ -24,6 +24,24 @@ begin
   v_owner := (v_created->>'user_id')::uuid;
   v_member := public.join_group_member(v_group, 'Member', repeat('b', 64), 1000);
 
+  insert into public.imessage_setup_tokens (
+    token_hash, conversation_hash, sender_hash, group_id, expires_at
+  ) values (
+    repeat('c', 64), repeat('d', 64), repeat('e', 64), v_group,
+    now() + interval '15 minutes'
+  );
+  perform public.consume_imessage_setup(repeat('c', 64), v_group, v_owner);
+  if not exists (
+    select 1 from public.imessage_conversations
+    where conversation_hash = repeat('d', 64) and group_id = v_group
+  ) or not exists (
+    select 1 from public.imessage_identities
+    where conversation_hash = repeat('d', 64)
+      and sender_hash = repeat('e', 64) and user_id = v_owner
+  ) then
+    raise exception 'optional iMessage binding was not created';
+  end if;
+
   if public.points_balance(v_group, v_owner) <> 1000
     or public.points_balance(v_group, v_member) <> 1000 then
     raise exception 'starting allocations are incorrect';

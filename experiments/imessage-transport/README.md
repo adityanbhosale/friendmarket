@@ -121,37 +121,43 @@ Market-specific membership, market deletion, and random adjudicator selection
 are not in the current database model. The agent says so instead of pretending
 to perform them. Native iMessage group membership is never changed.
 
-### 1. Bind one iMessage group to one Sidebar group
+### 1. Create or connect with `Sidebar, start`
 
-Bindings are explicit for the proof of concept. This prevents an iMessage
-sender or conversation from selecting arbitrary Sidebar UUIDs in a message.
+After migration `008_optional_imessage_links.sql` is applied, configure these
+values only in the root `.env.local`:
 
-Use `npm run smoke` or `.local/evidence.jsonl` to obtain the 12-character
-conversation and sender hashes. In the Supabase SQL editor, use this read-only
-query to find the matching Sidebar group and member UUIDs:
-
-```sql
-select g.id as group_id, g.name as group_name,
-       u.id as user_id, u.name as user_name
-from groups g
-join group_members gm on gm.group_id = g.id
-join users u on u.id = gm.user_id
-order by g.name, u.name;
+```zsh
+openssl rand -base64 32
 ```
 
-Put the resulting values in the root `.env.local`, which is gitignored:
-
 ```dotenv
-SIDEBAR_IMESSAGE_CONVERSATION_HASH=a26cb18099e4
-SIDEBAR_GROUP_ID=00000000-0000-4000-8000-000000000000
-SIDEBAR_IMESSAGE_USER_MAP={"34023a9ca954":"11111111-1111-4111-8111-111111111111"}
+SIDEBAR_IMESSAGE_ID_SECRET=the-generated-value
+SIDEBAR_APP_URL=https://your-sidebar-deployment.example
 SIDEBAR_GROUP_TIMEZONE=America/New_York
 ```
 
-Each sender hash maps to an existing member UUID. Add another JSON property for
-each friend who should be able to act. Multiple groups can instead use the
-`SIDEBAR_IMESSAGE_BINDINGS` JSON-array form documented in the root
-`.env.example`.
+Keep the secret stable: it creates non-reversible, keyed hashes for native
+conversation and sender identifiers. Raw phone numbers and chat IDs are never
+stored in Supabase.
+
+An unconnected participant sends `Sidebar, start`. The bot acknowledges in the
+group and sends that participant a direct iMessage containing a single-use
+browser link that expires after 15 minutes. The link is never posted to the
+shared group. The page then:
+
+- connects the conversation to the Sidebar group in the current web session;
+- lets a new user create a Sidebar group if the conversation has none; or
+- lets another participant privately enter the existing group password and
+  create their own member identity.
+
+The setup token is stored only as a SHA-256 hash and is consumed atomically with
+the group membership and iMessage binding. A Sidebar group needs no iMessage
+row at all, so web-only groups continue to work unchanged. Adding or removing a
+native iMessage participant still does not alter Sidebar membership.
+
+The older `SIDEBAR_IMESSAGE_CONVERSATION_HASH`, `SIDEBAR_GROUP_ID`, and
+`SIDEBAR_IMESSAGE_USER_MAP` values remain available only as a temporary local
+fallback for an already configured test chat.
 
 ### 2. Natural-language interpretation
 
@@ -198,6 +204,6 @@ npm run agent
 Stop with Control-C. The process logs only redacted event, conversation, and
 sender hashes—not message bodies or credentials.
 
-This local binding is suitable for validating the product loop, not a public
-beta. A hosted transport and a database-backed identity-linking flow are still
-required before removing the Mac dependency.
+This database-backed linking flow is suitable for validating onboarding, but
+the local Photon transport still depends on this Mac. A hosted iMessage
+transport remains required before a public beta can remove that dependency.
