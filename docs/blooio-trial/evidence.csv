@@ -1,0 +1,14 @@
+test_id,scheduled_at_et,phone_sent_at_et,webhook_received_at_et,api_accepted_at_et,device_received_at_et,event_id,message_id,group_alias,group_id,chat_id,sender_alias,participant_aliases,direction,http_status,delivery_attempts,result,notes
+INV-01,,,,,,,,,,,,,,,pending,,Record plan sender channel and expiry
+DM-A-01,,,,,,,,DM-A,,,A,,inbound,,,pending,Direct inbound baseline
+DM-A-01-R,,,,,,,,DM-A,,,BOT,,outbound,,,pending,Direct reply baseline
+G1-A-01,,,,,,,,G1,,,A,,inbound,,,pending,Start native group
+G1-B-01,,,,,,,,G1,,,B,,inbound,,,pending,Verify individual sender
+G1-A-01-R,,,,,,,,G1,,,BOT,,outbound,,,pending,Exact group reply
+G2-A-01,,,,,,,,G2,,,A,,inbound,,,pending,Overlapping group A
+G2-C-01,,,,,,,,G2,,,C,,inbound,,,pending,Overlapping group C
+G1-RENAME-01,,,,,,,,G1,,,A,,inbound,,,pending,After group rename
+G1-ADD-C-01,,,,,,,,G1,,,C,,inbound,,,pending,After adding C
+OUTAGE-G1-01,,,,,,,,G1,,,A,,inbound,,,pending,Receiver returns 503
+OUTAGE-G2-01,,,,,,,,G2,,,C,,inbound,,,pending,Receiver returns 503
+API-GROUP-01,,,,,,,,G3,,,A|B,,outbound,,,pending,POST v4 groups if permitted
