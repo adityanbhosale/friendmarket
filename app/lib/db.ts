@@ -56,8 +56,13 @@ async function request<T>(
     throw new DbError(`${res.status} ${path}: ${body}`, res.status, body);
   }
 
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  // PostgREST answers `Prefer: return=minimal` with 201 and a zero-byte body,
+  // not 204, so a status check alone is not enough — res.json() on an empty
+  // body throws "Unexpected end of JSON input" and takes the whole action with
+  // it. Decide on the body, which covers 204, 205, and the 201 case alike.
+  const body = await res.text();
+  if (!body) return undefined as T;
+  return JSON.parse(body) as T;
 }
 
 export class DbError extends Error {
