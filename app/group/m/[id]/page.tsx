@@ -7,6 +7,7 @@ import {
   getMarket,
   impliedProbability,
   marketState,
+  canResolveAt,
   STATE_LABEL,
   type MarketState,
 } from "../../../lib/market-data";
@@ -37,11 +38,12 @@ export default async function MarketPage({
 
   const { market, sides, pools, totals, myStakes } = data;
   const state = marketState(market);
+  const resolutionReady = canResolveAt(market);
   const balance = await getBalance(group.id, user.id);
 
   const isProposer = market.proposer_id === user.id;
   const canStake = state === "seeding" || state === "open";
-  const canResolve = isProposer && state === "closed";
+  const canResolve = isProposer && state === "closed" && resolutionReady;
   const sealed = state === "seeding";
 
   const stakedOn = (sideId: string) =>
@@ -65,7 +67,7 @@ export default async function MarketPage({
             <dl className="mt-8 border-t border-rule text-sm">
               <Row label="Seeding ends" value={when(market.reveal_at)} />
               <Row label="Closes" value={when(market.close_at)} />
-              <Row label="Resolved by" value={when(market.resolve_at)} last />
+              <Row label="Resolution opens" value={when(market.resolve_at)} last />
             </dl>
           </div>
 
@@ -193,7 +195,13 @@ export default async function MarketPage({
                   />
                 )}
 
-                {state === "closed" && !isProposer && (
+                {state === "closed" && !resolutionReady && (
+                  <p className="border-t border-foreground pt-6 text-sm text-muted">
+                    Closed. Resolution opens {when(market.resolve_at)}.
+                  </p>
+                )}
+
+                {state === "closed" && resolutionReady && !isProposer && (
                   <p className="border-t border-foreground pt-6 text-sm text-muted">
                     Closed. Waiting on whoever opened it to settle.
                   </p>

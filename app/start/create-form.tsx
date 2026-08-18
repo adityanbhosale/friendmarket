@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createGroup, type FormState } from "../lib/actions";
+import { RecoveryCodeNotice } from "../recovery-code-notice";
 
 const INPUT =
   "h-11 w-full border border-rule bg-background px-4 text-base placeholder:text-muted focus:border-foreground focus:outline-none";
@@ -11,6 +12,10 @@ export function CreateGroupForm() {
     createGroup,
     {},
   );
+
+  if (state.recoveryCode) {
+    return <RecoveryCodeNotice code={state.recoveryCode} groupId={state.groupId} />;
+  }
 
   return (
     <form action={action} className="max-w-[420px]">

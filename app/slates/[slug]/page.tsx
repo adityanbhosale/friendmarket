@@ -31,7 +31,7 @@ export default async function SlatePage({ params }: PageProps<"/slates/[slug]">)
 
   return (
     <main className="flex-1">
-      <Masthead up="/slates" current="slates" />
+      <Masthead up="/slates" />
 
       <Shell>
         <div className="py-16 sm:py-20 lg:py-24">
@@ -66,7 +66,7 @@ export default async function SlatePage({ params }: PageProps<"/slates/[slug]">)
       <footer className="border-t border-rule">
         <Shell>
           <div className="flex flex-wrap items-baseline justify-between gap-4 py-8">
-            <Nav current="slates" />
+            <Nav />
             <span className="text-sm text-muted">
               Points only. Settle your own Venmo beef.
             </span>

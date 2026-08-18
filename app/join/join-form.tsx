@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { joinGroup, type FormState } from "../lib/actions";
+import Link from "next/link";
+import { RecoveryCodeNotice } from "../recovery-code-notice";
 
 const INPUT =
   "h-11 w-full border border-rule bg-background px-4 text-base placeholder:text-muted focus:border-foreground focus:outline-none";
@@ -11,6 +13,10 @@ export function JoinForm({ linkId }: { linkId?: string }) {
     joinGroup,
     {},
   );
+
+  if (state.recoveryCode) {
+    return <RecoveryCodeNotice code={state.recoveryCode} groupId={state.groupId} />;
+  }
 
   return (
     <form action={action} className="max-w-[420px]">
@@ -67,6 +73,13 @@ export function JoinForm({ linkId }: { linkId?: string }) {
       {/* aria-live so the failure is announced, not just repainted. */}
       <p role="status" aria-live="polite" className="mt-3 text-sm text-muted">
         {state.error ?? ""}
+      </p>
+      <p className="mt-5 text-sm text-muted">
+        Returning on a new device?{" "}
+        <Link href="/recover" className="underline underline-offset-4 hover:text-foreground">
+          Use your recovery code
+        </Link>
+        .
       </p>
     </form>
   );

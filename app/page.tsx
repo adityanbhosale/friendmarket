@@ -203,7 +203,7 @@ function MarketTable() {
         </div>
 
         <dl>
-          <StatRow label="Pool" value={`$${pool}`} />
+          <StatRow label="Pool" value={`${pool} pts`} />
           <StatRow label="Bettors" value={String(bettors)} />
           <StatRow label="Closes" value={`${closes} · ${closesIn} left`} last />
         </dl>
@@ -211,7 +211,7 @@ function MarketTable() {
 
       {/* Table note */}
       <p className="mt-3 text-xs text-muted">
-        Retain this portion. Stakes are in points and are not redeemable.
+        Stakes are in points and are not redeemable.
       </p>
     </div>
   );
@@ -298,7 +298,7 @@ function HowItWorks() {
         <div className="py-20 sm:py-24 lg:py-32">
           <SectionLabel>How it works</SectionLabel>
           <h2 className="type-head mt-3 mb-12 lg:mb-16">
-            Three steps. That&apos;s the whole product.
+            Four steps. That&apos;s the whole product.
           </h2>
 
           <ol className="sm:grid sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-4 lg:gap-x-0">

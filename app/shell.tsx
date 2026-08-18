@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { Logo } from "./logo";
 
-export type NavKey = "slates" | "rules" | "join";
+export type NavKey = "rules" | "join";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return <div className="broadsheet">{children}</div>;
@@ -17,9 +17,6 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 export function Nav({ current }: { current?: NavKey }) {
   return (
     <nav className="flex items-baseline gap-5 text-sm">
-      <NavLink href="/slates" active={current === "slates"}>
-        Slates
-      </NavLink>
       <NavLink href="/docs" active={current === "rules"}>
         Rules
       </NavLink>

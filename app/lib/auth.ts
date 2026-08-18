@@ -10,6 +10,7 @@ export type User = {
   name: string;
   email: string | null;
   phone: string | null;
+  recovery_code_hash: string | null;
   created_at: string;
 };
 

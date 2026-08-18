@@ -6,6 +6,7 @@ import { count } from "../lib/db";
 import { getBalance } from "../lib/points";
 import { listMarkets, marketState, STATE_LABEL } from "../lib/market-data";
 import { signOut } from "../lib/actions";
+import { RecoveryCodeForm } from "./recovery-code-form";
 
 export const metadata: Metadata = { title: "Your group — Sidebar" };
 
@@ -46,6 +47,8 @@ export default async function GroupPage() {
               Anyone with the group ID and the password can join. Send them
               separately if you care about who gets in.
             </p>
+
+            <RecoveryCodeForm hasCode={Boolean(user.recovery_code_hash)} />
 
             <form action={signOut}>
               <button
@@ -102,7 +105,7 @@ export default async function GroupPage() {
                             defeat the point of blind seeding. */}
                         <span className="font-mono tabular-nums">
                           {totals?.revealed
-                            ? `${totals.total_pool.toLocaleString("en-US")} pts`
+                            ? `${(totals.total_pool ?? 0).toLocaleString("en-US")} pts`
                             : "pool sealed"}
                         </span>
                       </div>

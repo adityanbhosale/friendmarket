@@ -100,7 +100,7 @@ export function MarketForm() {
           />
         </Field>
 
-        <Field label="Resolved by" htmlFor="resolve_at" last>
+        <Field label="Resolution opens" htmlFor="resolve_at" last>
           <input
             id="resolve_at"
             name="resolve_at"
@@ -110,7 +110,7 @@ export function MarketForm() {
             className={INPUT}
           />
           <p className="mt-2 text-xs text-muted">
-            You opened it, so you settle it.
+            You opened it, so you can settle it from this time onward.
           </p>
         </Field>
       </div>

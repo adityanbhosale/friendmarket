@@ -15,7 +15,7 @@ export default function SlatesIndex() {
 
   return (
     <main className="flex-1">
-      <Masthead up="/" current="slates" />
+      <Masthead up="/" />
 
       <Shell>
         <div className="py-16 sm:py-20 lg:py-24">
@@ -82,7 +82,7 @@ export default function SlatesIndex() {
       <footer className="border-t border-rule">
         <Shell>
           <div className="flex flex-wrap items-baseline justify-between gap-4 py-8">
-            <Nav current="slates" />
+            <Nav />
             <span className="text-sm text-muted">
               Points only. Settle your own Venmo beef.
             </span>
