@@ -4,6 +4,8 @@
 import Link from "next/link";
 import { Logo } from "./logo";
 
+export type NavKey = "slates" | "rules" | "join";
+
 export function Shell({ children }: { children: React.ReactNode }) {
   return <div className="broadsheet">{children}</div>;
 }
@@ -12,7 +14,7 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
   return <span className="text-sm text-muted">{children}</span>;
 }
 
-export function Nav({ current }: { current?: "slates" | "rules" }) {
+export function Nav({ current }: { current?: NavKey }) {
   return (
     <nav className="flex items-baseline gap-5 text-sm">
       <NavLink href="/slates" active={current === "slates"}>
@@ -20,6 +22,9 @@ export function Nav({ current }: { current?: "slates" | "rules" }) {
       </NavLink>
       <NavLink href="/docs" active={current === "rules"}>
         Rules
+      </NavLink>
+      <NavLink href="/join" active={current === "join"}>
+        Join
       </NavLink>
     </nav>
   );
@@ -59,7 +64,7 @@ export function Masthead({
   current,
 }: {
   up?: string;
-  current?: "slates" | "rules";
+  current?: NavKey;
 }) {
   return (
     <div className="border-b border-rule">

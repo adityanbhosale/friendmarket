@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Masthead, Nav, Shell, SectionLabel } from "./shell";
 
@@ -91,12 +92,20 @@ function Hero() {
               making.
             </h1>
 
-            <a
-              href="#count-me-in"
-              className="mt-10 inline-flex h-11 items-center bg-foreground px-6 text-sm text-background transition-opacity hover:opacity-80"
-            >
-              Count me in
-            </a>
+            <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+              <Link
+                href="/start"
+                className="inline-flex h-11 items-center bg-foreground px-6 text-sm text-background transition-opacity hover:opacity-80"
+              >
+                Open a group
+              </Link>
+              <Link href="/join" className="text-sm text-muted hover:text-foreground">
+                Join with a group ID
+              </Link>
+              <a href="#count-me-in" className="text-sm text-muted hover:text-foreground">
+                Just leave your name
+              </a>
+            </div>
           </div>
         </div>
       </Shell>
