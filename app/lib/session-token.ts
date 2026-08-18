@@ -48,9 +48,12 @@ export function decodeSession(token: string | undefined): Session | null {
   if (dot < 1) return null;
 
   const payload = token.slice(0, dot);
-  const provided = Buffer.from(token.slice(dot + 1), "base64url");
-  const expected = Buffer.from(sign(payload), "base64url");
+  const provided = Buffer.from(token.slice(dot + 1), "utf8");
+  const expected = Buffer.from(sign(payload), "utf8");
 
+  // Compare the canonical base64url text, not decoded bytes. Base64 decoders
+  // accept non-canonical trailing-bit aliases, which would otherwise allow
+  // multiple token strings to represent the same signature.
   // Length check first: timingSafeEqual throws on a mismatch.
   if (provided.length !== expected.length) return null;
   if (!timingSafeEqual(provided, expected)) return null;
