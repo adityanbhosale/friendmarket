@@ -23,6 +23,18 @@ Status values are `untested`, `pass`, `fail`, and `blocked`.
 | Trial-to-paid identity continuity | untested |  |  |
 | 48-hour completeness and latency | untested |  |  |
 
+## Run log
+
+### 2026-08-18 — first native-group inbound
+
+- The temporary HTTPS receiver accepted and retained two independent synthetic
+  POST requests, including a health check at 14:56:32 ET.
+- A tagged message was sent from the native iMessage group after the webhook was
+  configured, but no Blooio request reached the receiver.
+- Status is blocked rather than failed until a direct-message control and the
+  Blooio webhook delivery log distinguish group ingestion from subscription
+  configuration.
+
 ## Decision
 
 Current recommendation: **no-go pending trial evidence**.
