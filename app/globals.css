@@ -5,6 +5,8 @@
   --foreground: #111111;
   --muted: #666666;
   --rule: #e5e5e5;
+  /* Highlight the headline sweep passes through. */
+  --sheen: #9b9b9b;
 }
 
 @theme inline {
@@ -55,4 +57,66 @@ body {
   font-size: clamp(1.375rem, 2.2vw, 2rem);
   line-height: 1.15;
   letter-spacing: -0.025em;
+}
+
+/* The hero opts out of the 1600px cap: it fills whatever the viewport is,
+   keeping only the outer gutters. Everything else keeps the reading measure. */
+.broadsheet-full {
+  width: 100%;
+  padding-inline: clamp(1.5rem, 5vw, 6rem);
+}
+
+/* Fluid from phone to ultrawide with no breakpoints — the size is a function
+   of the viewport, so it fills the screen it lands on. */
+.type-hero {
+  font-size: clamp(2.5rem, 8.2vw, 8.5rem);
+  line-height: 0.97;
+  letter-spacing: -0.04em;
+}
+
+/* A slow specular sweep across the headline — the one piece of motion on the
+   page. Monochrome, so it stays inside the black-and-white system. */
+.ink-sweep {
+  color: var(--foreground);
+}
+
+/* Guarded: without background-clip support the rule below would paint the
+   text transparent and leave the headline invisible. */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .ink-sweep {
+    background-image: linear-gradient(
+      100deg,
+      var(--foreground) 0%,
+      var(--foreground) 40%,
+      var(--sheen) 50%,
+      var(--foreground) 60%,
+      var(--foreground) 100%
+    );
+    background-size: 250% 100%;
+    background-position: 150% 0;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: ink-sweep 8s cubic-bezier(0.4, 0, 0.2, 1) 1.2s infinite;
+  }
+}
+
+@keyframes ink-sweep {
+  0% {
+    background-position: 150% 0;
+  }
+  55%,
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+/* Motion is decoration here, so it goes away entirely rather than slowing. */
+@media (prefers-reduced-motion: reduce) {
+  .ink-sweep {
+    background-image: none;
+    color: var(--foreground);
+    animation: none;
+  }
 }

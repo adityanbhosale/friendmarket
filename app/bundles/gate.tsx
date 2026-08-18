@@ -19,8 +19,8 @@ export function ComingSoon() {
           <h1 className="type-statement mt-5 text-balance">Market Bundles</h1>
 
           <p className="mt-6 max-w-[40ch] leading-relaxed text-muted">
-            Curated public markets that resolve inside one trip window, staked
-            blind against each other. Not open yet.
+            Curated public markets for your friends&apos; next fall break /
+            spring break trip.
           </p>
         </div>
       </Shell>

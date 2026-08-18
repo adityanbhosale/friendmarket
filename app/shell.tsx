@@ -2,7 +2,6 @@
 // client landing page and the static /docs and /bundles routes.
 
 import Link from "next/link";
-import { BUNDLES_LIVE } from "./lib/flags";
 import { Logo } from "./logo";
 
 export type NavKey = "bundles" | "rules" | "join";
@@ -20,11 +19,6 @@ export function Nav({ current }: { current?: NavKey }) {
     <nav className="flex items-baseline gap-5 text-sm">
       <NavLink href="/bundles" active={current === "bundles"}>
         Market Bundles
-        {!BUNDLES_LIVE && (
-          <span className="ml-1.5 align-[0.15em] font-mono text-[0.65em] tracking-wider text-muted uppercase">
-            soon
-          </span>
-        )}
       </NavLink>
       <NavLink href="/docs" active={current === "rules"}>
         Rules

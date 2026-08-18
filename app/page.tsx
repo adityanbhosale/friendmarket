@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Masthead, Nav, Shell, SectionLabel } from "./shell";
 
@@ -71,7 +72,7 @@ export default function Home() {
       <Hero />
       <MarketSection />
       <HowItWorks />
-      <CountMeIn />
+      <ClosingCTA />
       <Footer />
     </main>
   );
@@ -80,36 +81,91 @@ export default function Home() {
 function Hero() {
   return (
     <section className="border-b border-rule">
-      <Shell>
-        <div className="grid gap-x-12 gap-y-10 py-20 sm:py-28 md:grid-cols-12 lg:py-36">
-          <div className="md:col-span-4 md:col-start-9 md:row-start-1">
-            <span className="text-sm text-muted">Invite only</span>
-          </div>
+      <div className="broadsheet-full">
+        <div className="py-24 sm:py-32 lg:py-40">
+          <h1 className="type-hero ink-sweep text-balance">
+            Prediction markets on the bets your group chat was already talking
+            about.
+          </h1>
 
-          <div className="md:col-span-7 md:col-start-1 md:row-start-1">
-            <h1 className="type-statement max-w-[20ch] text-balance">
-              Prediction markets on the bets your group chat was already talking
-              about.
-            </h1>
-
-            <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+          {/* Two doors, and the copy names the situation the visitor is
+              actually in rather than the record we are about to write. */}
+          <div className="mt-14 flex flex-col gap-x-14 gap-y-10 lg:flex-row lg:items-start">
+            <div>
               <Link
                 href="/start"
-                className="inline-flex h-11 items-center bg-foreground px-6 text-sm text-background transition-opacity hover:opacity-80"
+                className="inline-flex h-12 items-center bg-foreground px-7 text-base text-background transition-opacity hover:opacity-80"
               >
-                Open a group
+                Start a group
               </Link>
-              <Link href="/join" className="text-sm text-muted hover:text-foreground">
-                Join with a group ID
-              </Link>
-              <a href="#count-me-in" className="text-sm text-muted hover:text-foreground">
-                Just leave your name
-              </a>
+              <p className="mt-3 text-sm text-muted">
+                Free, takes a minute. Invite the chat after.
+              </p>
+            </div>
+
+            <div className="lg:border-l lg:border-rule lg:pl-14">
+              <InviteCode />
             </div>
           </div>
         </div>
-      </Shell>
+      </div>
     </section>
+  );
+}
+
+/**
+ * The invited-friend path, which is most of launch-night traffic: someone was
+ * sent a code in a group chat. Taking the code here rather than on /join saves
+ * a page load, and the code is only half the credential — the password still
+ * gets asked for on the next screen, so nothing is weakened by accepting it
+ * on a public page.
+ */
+function InviteCode() {
+  const router = useRouter();
+  const [code, setCode] = useState("");
+
+  // Codes get read aloud and retyped, so forgive case, spaces, and the dash.
+  const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!clean) return;
+    router.push(`/join/${clean}`);
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <label htmlFor="invite" className="block text-base">
+        Got a code from a friend?
+      </label>
+
+      <div className="mt-3 flex gap-2">
+        <input
+          id="invite"
+          name="invite"
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="K7QM-3XPD"
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          maxLength={9}
+          className="h-12 w-[11ch] border border-rule bg-background px-3 font-mono text-base tracking-wider uppercase placeholder:tracking-wider placeholder:text-muted focus:border-foreground focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={!clean}
+          className="h-12 border border-foreground px-6 text-base transition-opacity hover:opacity-60 disabled:opacity-30"
+        >
+          Join
+        </button>
+      </div>
+
+      <p className="mt-3 text-sm text-muted">
+        No code? Ask whoever started the group.
+      </p>
+    </form>
   );
 }
 
@@ -328,94 +384,31 @@ function HowItWorks() {
   );
 }
 
-function CountMeIn() {
-  const [name, setName] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">(
-    "idle",
-  );
-  const [position, setPosition] = useState<number | null>(null);
-  const [error, setError] = useState("");
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!name.trim() || status === "sending") return;
-
-    setStatus("sending");
-    setError("");
-
-    try {
-      const res = await fetch("/api/interest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim() }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error ?? "Something broke.");
-
-      setPosition(data.position);
-      setStatus("done");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something broke.");
-      setStatus("error");
-    }
-  }
-
+/* Removing the waitlist took the last call to action off the bottom of the
+   page. Anyone who reads to the end has already decided; they should not have
+   to scroll back up to act on it. */
+function ClosingCTA() {
   return (
-    <section id="count-me-in" className="scroll-mt-8 border-b border-rule">
+    <section className="border-b border-rule">
       <Shell>
-        <div className="grid gap-x-12 gap-y-10 py-20 sm:py-24 lg:grid-cols-12 lg:items-start lg:py-32">
-          <div className="lg:col-span-4">
-            <SectionLabel>Count me in</SectionLabel>
-            <h2 className="type-head mt-3 text-balance">
-              Leave your name. We&apos;ll open the book when there are enough of
-              you.
-            </h2>
-          </div>
+        <div className="flex flex-col items-center py-20 text-center sm:py-24">
+          <h2 className="type-head max-w-[24ch] text-balance">
+            Your group chat already made the bet. This is where it settles.
+          </h2>
 
-          <div className="lg:col-span-6 lg:col-start-6">
-            {status === "done" && position !== null ? (
-              <div className="border-t border-b border-foreground py-6">
-                <p className="text-2xl font-medium">
-                  You&apos;re #{position} in.
-                </p>
-                <p className="mt-2 text-muted">
-                  Start thinking about which of your friends is the market.
-                </p>
-              </div>
-            ) : (
-              <form
-                onSubmit={handleSubmit}
-                className="flex flex-col gap-3 sm:flex-row"
-              >
-                <label htmlFor="name" className="sr-only">
-                  Your name
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                  maxLength={40}
-                  autoComplete="given-name"
-                  required
-                  className="h-11 flex-1 border border-rule bg-background px-4 text-base placeholder:text-muted focus:border-foreground focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={status === "sending" || !name.trim()}
-                  className="h-11 bg-foreground px-6 text-sm text-background transition-opacity hover:opacity-80 disabled:opacity-40"
-                >
-                  {status === "sending" ? "…" : "Count me in"}
-                </button>
-              </form>
-            )}
-
-            {status === "error" && (
-              <p className="mt-3 text-sm text-muted">{error}</p>
-            )}
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-x-7 gap-y-4">
+            <Link
+              href="/start"
+              className="inline-flex h-12 items-center bg-foreground px-7 text-base text-background transition-opacity hover:opacity-80"
+            >
+              Start a group
+            </Link>
+            <Link
+              href="/join"
+              className="text-base text-muted hover:text-foreground"
+            >
+              I have a code
+            </Link>
           </div>
         </div>
       </Shell>
