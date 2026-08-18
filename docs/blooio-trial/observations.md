@@ -5,7 +5,7 @@ Status values are `untested`, `pass`, `fail`, and `blocked`.
 | Capability | Status | Observed evidence | Blocker or follow-up |
 | --- | --- | --- | --- |
 | Trial sender identity and type | untested |  |  |
-| Manual add to native iMessage group | untested |  |  |
+| Manual add to native iMessage group | fail | Two tagged messages produced no Blooio event | Requires dedicated Inbound trial or vendor explanation |
 | Stable native group/chat ID | untested | Direct chat ID was stable across five control events | Native group still required |
 | Individual sender attribution | untested |  |  |
 | Participant information | untested |  |  |
@@ -58,11 +58,19 @@ Status values are `untested`, `pass`, `fail`, and `blocked`.
   new message ID in the same chat and correctly reversed sender and recipient.
 - The observed trial behavior is therefore outbound-first. It still does not
   validate the cold-inbound behavior required from the paid Inbound plan.
+- A second tagged message sent in the existing native iMessage group after the
+  direct outbound-first route was established produced no Blooio event after
+  three receiver checks. Direct messaging works; manually-added native-group
+  ingestion does not work on the current trial configuration.
+- This fails Sidebar's primary onboarding gate. Do not infer that the paid
+  Inbound line works until Blooio demonstrates the exact add-to-existing-group
+  flow on a dedicated Inbound-equivalent trial line.
 
 ## Decision
 
-Current recommendation: **hold; do not purchase until cold inbound is enabled
-for the trial or demonstrated on the exact Inbound configuration**.
+Current recommendation: **no-go on the current trial configuration; do not
+purchase until Blooio demonstrates cold inbound and existing native-group
+ingestion on the exact Inbound configuration**.
 
 Final recommendation:
 

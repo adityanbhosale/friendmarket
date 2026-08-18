@@ -4,6 +4,7 @@ DM-A-01,2026-08-18,,,,,,,DM-A,,,A,,inbound,,,blocked,Direct message sent but no 
 DM-A-01-R,,,,,,,,DM-A,,,BOT,,outbound,,,pending,Direct reply baseline
 DM-A-02,2026-08-18,,2026-08-18 15:03:27 ET,,,,,DM-A,,,A,,inbound,200,1,pass,Outbound-first control produced one received event after four lifecycle events for the outbound message
 G1-A-01,2026-08-18,,,,,,,G1,,,A,,inbound,,,blocked,Group message sent but no Blooio request reached verified receiver; check dashboard delivery log and direct inbound
+G1-A-02,2026-08-18,,,,,,,G1,,,A,,inbound,,,fail,Existing native-group message still produced no Blooio event after direct outbound-first route was established
 G1-B-01,,,,,,,,G1,,,B,,inbound,,,pending,Verify individual sender
 G1-A-01-R,,,,,,,,G1,,,BOT,,outbound,,,pending,Exact group reply
 G2-A-01,,,,,,,,G2,,,A,,inbound,,,pending,Overlapping group A
