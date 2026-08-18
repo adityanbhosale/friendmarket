@@ -78,14 +78,44 @@ export default function Home() {
   );
 }
 
+const HEADLINE =
+  "Private prediction markets on the bets your group chat was already talking about.";
+
+/**
+ * Renders a sentence one word per element so each can be delayed in reading
+ * order. The words are real text in the server-rendered HTML — the animation
+ * only moves them, so crawlers and a failed stylesheet both still see the
+ * sentence.
+ */
+function StaggeredWords({ text }: { text: string }) {
+  const words = text.split(" ");
+
+  return (
+    <>
+      {words.map((word, i) => (
+        <span key={`${word}-${i}`}>
+          <span
+            className="word-in"
+            // 45ms apart: fast enough to read as one motion, slow enough that
+            // the direction is legible.
+            style={{ animationDelay: `${i * 45}ms` }}
+          >
+            {word}
+          </span>
+          {i < words.length - 1 ? " " : null}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function Hero() {
   return (
     <section className="border-b border-rule">
       <div className="broadsheet-full">
         <div className="py-24 sm:py-32 lg:py-40">
-          <h1 className="type-hero ink-sweep text-balance">
-            Prediction markets on the bets your group chat was already talking
-            about.
+          <h1 className="type-hero text-balance">
+            <StaggeredWords text={HEADLINE} />
           </h1>
 
           {/* Two doors, and the copy names the situation the visitor is

@@ -5,8 +5,6 @@
   --foreground: #111111;
   --muted: #666666;
   --rule: #e5e5e5;
-  /* Highlight the headline sweep passes through. */
-  --sheen: #9b9b9b;
 }
 
 @theme inline {
@@ -74,49 +72,38 @@ body {
   letter-spacing: -0.04em;
 }
 
-/* A slow specular sweep across the headline — the one piece of motion on the
-   page. Monochrome, so it stays inside the black-and-white system. */
-.ink-sweep {
-  color: var(--foreground);
-}
-
-/* Guarded: without background-clip support the rule below would paint the
-   text transparent and leave the headline invisible. */
-@supports (background-clip: text) or (-webkit-background-clip: text) {
-  .ink-sweep {
-    background-image: linear-gradient(
-      100deg,
-      var(--foreground) 0%,
-      var(--foreground) 40%,
-      var(--sheen) 50%,
-      var(--foreground) 60%,
-      var(--foreground) 100%
-    );
-    background-size: 250% 100%;
-    background-position: 150% 0;
-    background-repeat: no-repeat;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: ink-sweep 8s cubic-bezier(0.4, 0, 0.2, 1) 1.2s infinite;
+/* The headline arrives a word at a time in reading order, so it builds left to
+   right and line by line wherever the text happens to wrap. Splitting on words
+   rather than lines is what makes that hold at every width — line boxes are not
+   addressable in CSS, and hardcoding the breaks would desync the moment the
+   type reflowed. */
+@keyframes word-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.18em);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    /* `none` rather than blur(0): the minifier renders blur(0) as the
+       argument-less blur(), which is legal but needlessly exotic. It
+       interpolates identically. */
+    filter: none;
   }
 }
 
-@keyframes ink-sweep {
-  0% {
-    background-position: 150% 0;
-  }
-  55%,
-  100% {
-    background-position: -50% 0;
-  }
+.word-in {
+  display: inline-block;
+  animation: word-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Motion is decoration here, so it goes away entirely rather than slowing. */
+/* Nothing animates in; the sentence is simply there. */
 @media (prefers-reduced-motion: reduce) {
-  .ink-sweep {
-    background-image: none;
-    color: var(--foreground);
+  .word-in {
     animation: none;
+    opacity: 1;
+    filter: none;
+    transform: none;
   }
 }
