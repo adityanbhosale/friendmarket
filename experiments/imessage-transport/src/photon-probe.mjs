@@ -3,6 +3,7 @@ import { createEvidenceRecorder } from "./evidence-store.mjs";
 import {
   createMessageProcessor,
   fingerprint,
+  isTaggedTestTraffic,
   normalizePhotonMessage,
 } from "./transport-core.mjs";
 
@@ -79,10 +80,14 @@ async function runWatcher(sdk) {
 
   await sdk.startWatching({
     onGroupMessage: async (message) => {
+      if (!isTaggedTestTraffic(message.text ?? "")) return;
       const envelope = normalizePhotonMessage(message);
       await processMessage(envelope);
     },
     onFromMeMessage: async (message) => {
+      if (message.chatKind !== "group" || !isTaggedTestTraffic(message.text ?? "")) {
+        return;
+      }
       await recordEvidence({
         observedAt: new Date().toISOString(),
         provider: "photon-local",

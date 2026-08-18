@@ -4,6 +4,7 @@ import {
   classifyInbound,
   createMessageProcessor,
   fingerprint,
+  isTaggedTestTraffic,
   normalizePhotonMessage,
 } from "../src/transport-core.mjs";
 
@@ -57,6 +58,7 @@ test("replies to explicit Sidebar commands and correlation tags", () => {
 test("ignores ordinary chatter, DMs, non-text events, and messages from the bot", () => {
   const cases = [
     [groupMessage({ text: "where are we meeting?" }), "ordinary_chatter"],
+    [groupMessage({ text: "ordinary chatter G1-N-01" }), "ordinary_chatter"],
     [groupMessage({ chatKind: "dm" }), "not_group"],
     [groupMessage({ kind: "memberAdded" }), "not_text"],
     [groupMessage({ isFromMe: true }), "from_me"],
@@ -68,6 +70,12 @@ test("ignores ordinary chatter, DMs, non-text events, and messages from the bot"
       reason,
     });
   }
+});
+
+test("limits live evidence collection to explicitly tagged test traffic", () => {
+  assert.equal(isTaggedTestTraffic("where are we meeting?"), false);
+  assert.equal(isTaggedTestTraffic("ordinary chatter G1-N-01"), true);
+  assert.equal(isTaggedTestTraffic("sidebar G1-A-01 ping"), true);
 });
 
 test("deduplicates events and always replies to the received conversation", async () => {

@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 const CORRELATION_TAG = /\b(?:DM|G\d+)-[A-Z0-9]+-\d+\b/i;
 const EXPLICIT_TRIGGER = /^\s*(?:@sidebar|sidebar)\b/i;
 
+export function isTaggedTestTraffic(text) {
+  return EXPLICIT_TRIGGER.test(text) || CORRELATION_TAG.test(text);
+}
+
 export function normalizePhotonMessage(message) {
   return {
     provider: "photon-local",
@@ -32,6 +36,9 @@ export function classifyInbound(envelope) {
   if (!envelope.senderId) return { action: "ignore", reason: "missing_sender" };
 
   const correlationTag = envelope.text.match(CORRELATION_TAG)?.[0]?.toUpperCase();
+  if (correlationTag?.includes("-N-")) {
+    return { action: "ignore", reason: "ordinary_chatter" };
+  }
   if (!EXPLICIT_TRIGGER.test(envelope.text) && !correlationTag) {
     return { action: "ignore", reason: "ordinary_chatter" };
   }
