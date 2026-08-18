@@ -1,10 +1,11 @@
 // Shared layout primitives. No hooks, no state — safe to render from both the
-// client landing page and the static /docs and /slates routes.
+// client landing page and the static /docs and /bundles routes.
 
 import Link from "next/link";
+import { BUNDLES_LIVE } from "./lib/flags";
 import { Logo } from "./logo";
 
-export type NavKey = "slates" | "rules" | "join";
+export type NavKey = "bundles" | "rules" | "join";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return <div className="broadsheet">{children}</div>;
@@ -17,8 +18,13 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 export function Nav({ current }: { current?: NavKey }) {
   return (
     <nav className="flex items-baseline gap-5 text-sm">
-      <NavLink href="/slates" active={current === "slates"}>
-        Slates
+      <NavLink href="/bundles" active={current === "bundles"}>
+        Market Bundles
+        {!BUNDLES_LIVE && (
+          <span className="ml-1.5 align-[0.15em] font-mono text-[0.65em] tracking-wider text-muted uppercase">
+            soon
+          </span>
+        )}
       </NavLink>
       <NavLink href="/docs" active={current === "rules"}>
         Rules

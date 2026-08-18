@@ -1,4 +1,4 @@
-// Slate data for the /slates demo. Pulls real public markets from Polymarket's
+// Slate data for the /bundles demo. Pulls real public markets from Polymarket's
 // Gamma API (no auth), weights each trip's slate toward its region, and falls
 // back to a fixed sample slate so a slate can never render empty.
 
@@ -484,7 +484,7 @@ export async function getSlate(trip: Trip): Promise<Slate> {
       source: "polymarket",
     };
   } catch (error) {
-    console.error(`[/slates/${trip.slug}] falling back to sample:`, error);
+    console.error(`[/bundles/${trip.slug}] falling back to sample:`, error);
     return sampleSlate(trip, window);
   }
 }

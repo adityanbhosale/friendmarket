@@ -12,7 +12,7 @@ const CONTENTS = [
   { n: "2", id: "pool", title: "The pool" },
   { n: "3", id: "pricing", title: "Pricing" },
   { n: "4", id: "sealed-seeding", title: "Sealed seeding" },
-  { n: "5", id: "slates", title: "Slates" },
+  { n: "5", id: "slates", title: "Market Bundles" },
   { n: "6", id: "sourcing", title: "Sourcing and selection" },
   { n: "7", id: "no-maker", title: "Why there is no market maker" },
   { n: "8", id: "matched-book", title: "Considered and rejected: matched book" },
@@ -222,23 +222,23 @@ export default function Docs() {
               </P>
             </Section>
 
-            <Section id="slates" n="5" title="Slates">
+            <Section id="slates" n="5" title="Market Bundles">
               <P>
-                A slate is a bundle of markets the venue did not write. They are
-                sourced from a public prediction market, they share a trip
+                A market bundle is a set of markets the venue did not write. They
+                are sourced from a public prediction market, they share a trip
                 window and a leaderboard, and they are presented together. That
                 is the whole of the relationship.
               </P>
 
               <SubSection n="5.1" title="The coupling is presentational" />
               <P>
-                Each market on a slate keeps its own independent parimutuel
+                Each market in a bundle keeps its own independent parimutuel
                 pool, its own reveal, and its own settlement. Nothing multiplies
                 across markets. Being right on six of eight does not compound —
                 it means you were right in six separate pools and wrong in two.
               </P>
               <P>
-                This is worth stating plainly, because a slate looks like a
+                This is worth stating plainly, because a bundle looks like a
                 parlay and is not one. A parlay couples at the <em>payoff</em>{" "}
                 level: it pays on the joint outcome of every leg at once, so the
                 thing being priced is a single point in the joint outcome space
@@ -251,13 +251,13 @@ export default function Docs() {
               <Table caption="Joint outcome space by leg count">
                 <Row label="3 legs" value="8" />
                 <Row label="5 legs" value="32" />
-                <Row label="8 legs — a full slate" value="256" strong />
+                <Row label="8 legs — a full bundle" value="256" strong />
               </Table>
 
               <P>
                 Fifteen people cannot populate 256 pools. A parimutuel pool with
                 one staker on each side is not a market, it is a bet with extra
-                steps. So the venue does not run parlay pools, and a slate is
+                steps. So the venue does not run parlay pools, and a bundle is
                 not one.
               </P>
               <P>
@@ -268,8 +268,8 @@ export default function Docs() {
 
               <SubSection n="5.2" title="The trading phase" />
               <P>
-                For external slates, sealed seeding is not the first phase. It
-                is the entire trading phase. The slate locks before the trip
+                For external bundles, sealed seeding is not the first phase. It
+                is the entire trading phase. The bundle locks before the trip
                 window opens, odds reveal at lock, and no open trading follows.
               </P>
               <P>
@@ -281,19 +281,19 @@ export default function Docs() {
                 already moved, which is free-riding on information that arrived
                 only after everybody else had committed.
               </P>
-              <P>So for slate markets the two timestamps collapse:</P>
+              <P>So for bundle markets the two timestamps collapse:</P>
 
               <Formula>reveal = close &lt; resolution</Formula>
 
               <P>
                 The strict ordering in section 9 governs markets the group
-                writes itself. Slate markets relax it to the above, and nothing
+                writes itself. Bundle markets relax it to the above, and nothing
                 else about section 9 changes.
               </P>
 
               <SubSection n="5.3" title="Reference prices" />
               <P>
-                The consensus column on a slate is the external market’s traded
+                The consensus column in a bundle is the external market’s traded
                 price at snapshot, displayed as an implied probability.
               </P>
               <P>
@@ -303,7 +303,7 @@ export default function Docs() {
                 3. The external price is there to be disagreed with.
               </P>
               <P>
-                Which is the actual game. On a slate you are not trying to
+                Which is the actual game. In a bundle you are not trying to
                 predict the world better than a liquid public market; you will
                 usually lose that. You are reading which of your friends is
                 wrong about where that market is wrong.
@@ -312,7 +312,7 @@ export default function Docs() {
 
             <Section id="sourcing" n="6" title="Sourcing and selection">
               <P>
-                The methodology, written down so a slate can be audited rather
+                The methodology, written down so a bundle can be audited rather
                 than trusted.
               </P>
 
@@ -327,14 +327,14 @@ export default function Docs() {
               <SubSection n="6.2" title="The pool" />
               <P>
                 Top-volume active markets, fetched in pages of one hundred and
-                merged into a single pool shared by every slate.
+                merged into a single pool shared by every bundle.
               </P>
               <Table caption="Pool construction">
                 <Row label="Pages read" value="6 × 100 = 600" />
                 <Row label="Ordering" value="volume, descending" />
                 <Row label="Page failure" value="tolerated, pool degrades" strong />
                 <Row label="Cache" value="revalidated hourly" />
-                <Row label="Scope" value="one read, all slates" />
+                <Row label="Scope" value="one read, all bundles" />
               </Table>
               <P>
                 Per-page failure tolerance matters more than it sounds: one
@@ -353,14 +353,14 @@ export default function Docs() {
               </Table>
               <P>
                 A market sitting at 99% leaves nothing to disagree about, and a
-                slate of near-certainties is a reading exercise rather than a
+                bundle of near-certainties is a reading exercise rather than a
                 game. Regional matches get the wider band because the
                 head-to-heads are the draw.
               </P>
               <P>
                 Near-duplicate markets are deduplicated. Public venues list
                 price ladders — the same question at four strike prices — and
-                without this step a slate fills up with one question wearing
+                without this step a bundle fills up with one question wearing
                 four hats.
               </P>
 
@@ -374,11 +374,11 @@ export default function Docs() {
               <P>
                 Matching uses word-boundary patterns rather than substring
                 search. This is not fastidiousness: substring matching put a
-                Mexican football club on a Texas slate by way of “cruz”, and put
+                Mexican football club on a Texas bundle by way of “cruz”, and put
                 the San Francisco Giants on a New York one. A regional tag that
                 is wrong is worse than no tag at all.
               </P>
-              <Table caption="Slate composition">
+              <Table caption="Bundle composition">
                 <Row label="Regional slots" value="up to 4" strong />
                 <Row label="Remainder" value="category round-robin" />
                 <Row label="In-window resolution" value="preferred, not required" />
@@ -387,19 +387,19 @@ export default function Docs() {
                 In-window resolution is a preference because the pool is
                 volume-ranked and clusters in the near term; requiring it would
                 starve a window three weeks out. Where regional coverage is
-                thin, the slate says so on its face. It never fakes the tag.
+                thin, the bundle says so on its face. It never fakes the tag.
               </P>
 
               <SubSection n="6.5" title="Failure, and one piece of staleness" />
               <P>
-                If the source is unreachable, a static sample slate renders in
-                its place carrying a notice that says exactly that. A slate
+                If the source is unreachable, a static sample bundle renders in
+                its place carrying a notice that says exactly that. A bundle
                 never renders empty.
               </P>
               <P>
                 One thing this demo does not do. The displayed consensus is a
                 snapshot and may be up to an hour stale under the cache policy
-                above. A production slate would freeze every reference price at
+                above. A production bundle would freeze every reference price at
                 a single canonical lock timestamp, so that every participant is
                 shown the same number and settlement can be audited against it.
                 This one does not. It is a demo, and that is the first gap you
@@ -574,9 +574,9 @@ export default function Docs() {
                 subject declines to cooperate.
               </P>
 
-              <SubSection n="10.1" title="Slate markets resolve elsewhere" />
+              <SubSection n="10.1" title="Bundle markets resolve elsewhere" />
               <P>
-                A market on a slate resolves to whatever the source market
+                A market in a bundle resolves to whatever the source market
                 officially resolves to. The oracle is external, which takes the
                 proposer out of adjudication entirely: there is no local
                 judgment to make, so there is nothing to dispute and no jury

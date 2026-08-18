@@ -1,26 +1,30 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BUNDLES_LIVE } from "../lib/flags";
 import { Masthead, Nav, Shell } from "../shell";
+import { ComingSoon } from "./gate";
 import { TRIPS, tripWindow } from "./markets";
 import { formatRange } from "./slate-table";
 
 export const metadata: Metadata = {
-  title: "Slates — Sidebar",
+  title: "Market Bundles — Sidebar",
   description:
-    "Mock trip slates: curated public prediction markets resolving inside one trip window, staked blind against each other.",
+    "Mock trip bundles: curated public prediction markets resolving inside one trip window, staked blind against each other.",
 };
 
-export default function SlatesIndex() {
+export default function BundlesIndex() {
+  if (!BUNDLES_LIVE) return <ComingSoon />;
+
   const now = new Date();
 
   return (
     <main className="flex-1">
-      <Masthead up="/" current="slates" />
+      <Masthead up="/" current="bundles" />
 
       <Shell>
         <div className="py-16 sm:py-20 lg:py-24">
           <h1 className="type-statement max-w-[18ch] text-balance">
-            A slate of real markets, staked blind.
+            A bundle of real markets, staked blind.
           </h1>
 
           <div className="measure mt-8 space-y-4 leading-relaxed">
@@ -30,12 +34,12 @@ export default function SlatesIndex() {
               real bet is against each other&apos;s read of it.
             </p>
             <p>
-              Stakes stay sealed until the slate locks at the start of the trip,
+              Stakes stay sealed until the bundle locks at the start of the trip,
               so nobody is following anybody. Whoever reads their
               friends&apos; blind spots best takes the pool.
             </p>
             <p>
-              Each slate leans on the markets nearest the destination, then
+              Each bundle leans on the markets nearest the destination, then
               fills out nationally.
             </p>
           </div>
@@ -46,7 +50,7 @@ export default function SlatesIndex() {
               return (
                 <li key={trip.slug} className="border-b border-rule">
                   <Link
-                    href={`/slates/${trip.slug}`}
+                    href={`/bundles/${trip.slug}`}
                     className="group flex items-baseline gap-4 py-5"
                   >
                     <span className="w-8 shrink-0 font-mono text-sm text-muted tabular-nums">
@@ -82,7 +86,7 @@ export default function SlatesIndex() {
       <footer className="border-t border-rule">
         <Shell>
           <div className="flex flex-wrap items-baseline justify-between gap-4 py-8">
-            <Nav current="slates" />
+            <Nav current="bundles" />
             <span className="text-sm text-muted">
               Points only. Settle your own Venmo beef.
             </span>

@@ -11,7 +11,7 @@ export function SlateTable({ slate }: { slate: Slate }) {
     <section className="border-t border-b border-foreground">
       {/* Slate head */}
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-b border-rule py-3 text-xs">
-        <span className="font-mono tabular-nums">SLATE NO. {trip.no}</span>
+        <span className="font-mono tabular-nums">BUNDLE NO. {trip.no}</span>
         <span className="text-muted">
           {trip.name} · {formatRange(window.start, window.end)}
         </span>
@@ -23,13 +23,13 @@ export function SlateTable({ slate }: { slate: Slate }) {
           SEEDING (SEALED)
         </span>
         <span className="ml-3 text-muted">
-          odds reveal when the slate locks at trip start
+          odds reveal when the bundle locks at trip start
         </span>
       </div>
 
       {slate.thinRegional && (
         <div className="border-b border-rule py-3 text-xs text-muted">
-          Thin regional coverage this window — slate leans national.
+          Thin regional coverage this window — bundle leans national.
         </div>
       )}
 
@@ -110,7 +110,7 @@ function Row({ n, market }: { n: number; market: SlateMarket }) {
         </span>
         <span
           className="hidden w-20 shrink-0 text-right font-mono text-muted sm:block"
-          title="Sealed until the slate locks"
+          title="Sealed until the bundle locks"
         >
           {MASK}
         </span>
