@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Masthead, Nav, Shell, SectionLabel } from "./shell";
+import { useLayoutEffect, useRef, useState } from "react";
+import { Masthead, Nav, Shell } from "./shell";
 
 // Hardcoded demo market. No market logic anywhere — these numbers are props.
 // Fractional odds are the conventional approximations of the implied
@@ -11,15 +11,15 @@ import { Masthead, Nav, Shell, SectionLabel } from "./shell";
 const MARKET = {
   id: "0007",
   status: "Open",
-  tag: "CAMPING TRIP",
-  question: "Will [redacted] get to the office before 10am tomorrow?",
+  tag: "Spreak '26 - Dublin, Ireland",
+  question: "Will [_____] get into a bar fight at Temple Bar?",
   yes: 34,
   no: 66,
   yesOdds: "15/8",
   noOdds: "1/2",
   pool: 124,
   bettors: 9,
-  closes: "Aug 14",
+  closes: "Mar 14",
   closesIn: "1d",
   // YES drifting down from ~53% to 34% over the last week. Purely decorative.
   spark: [
@@ -199,15 +199,96 @@ function InviteCode() {
   );
 }
 
+/**
+ * Split-flap reveal for a heading.
+ *
+ * Plays when the heading scrolls into view, not on mount: both of these sit
+ * below the fold, and an entrance that finishes before anyone can see it is
+ * just an invisible heading.
+ *
+ * The armed state is set in a layout effect rather than in the initial render
+ * so the server sends a heading that is simply visible. Without scripting the
+ * text stays put; with it, the class lands before the browser paints, and
+ * these are off-screen at that point anyway.
+ */
+function FlipHeading({
+  text,
+  className = "",
+  step = 26,
+}: {
+  text: string;
+  className?: string;
+  step?: number;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  // Classes are toggled on the node rather than held in state: this drives an
+  // animation, nothing else renders from it, and a state update here would be
+  // a re-render of the whole heading to change one attribute.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      el.classList.add("flip-play");
+      return;
+    }
+
+    el.classList.add("flip-armed");
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          el.classList.remove("flip-armed");
+          el.classList.add("flip-play");
+          io.disconnect();
+        }
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  const words = text.split(" ");
+  let n = 0;
+
+  return (
+    // Split into characters, a screen reader can announce it letter by
+    // letter. The label carries the phrase; the flaps are decoration.
+    <span
+      ref={ref}
+      aria-label={text}
+      className={`flip-line ${className}`}
+    >
+      {words.map((word, w) => (
+        <span key={`${word}-${w}`} aria-hidden="true">
+          {/* Whole words stay unbreakable so a flap never splits mid-word. */}
+          <span className="inline-block whitespace-nowrap">
+            {[...word].map((ch, c) => (
+              <span
+                key={c}
+                className="flip-char"
+                style={{ animationDelay: `${n++ * step}ms` }}
+              >
+                {ch}
+              </span>
+            ))}
+          </span>
+          {w < words.length - 1 ? " " : null}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function MarketSection() {
   return (
     <section className="border-b border-rule">
       <Shell>
         <div className="grid gap-x-12 gap-y-12 py-20 sm:py-24 lg:grid-cols-12 lg:py-32">
           <div className="lg:col-span-4">
-            <SectionLabel>Live market</SectionLabel>
-            <h2 className="type-head mt-3 text-balance">
-              Someone already opened this one.
+            <h2 className="type-head text-balance">
+              <FlipHeading text="Example Market" />
             </h2>
             <p className="measure mt-5 leading-relaxed text-muted">
               Odds are just the pool ratio. Nobody is quoting you a price.
@@ -382,9 +463,8 @@ function HowItWorks() {
     <section className="border-b border-rule">
       <Shell>
         <div className="py-20 sm:py-24 lg:py-32">
-          <SectionLabel>How it works</SectionLabel>
-          <h2 className="type-head mt-3 mb-12 lg:mb-16">
-            Three steps. That&apos;s the whole product.
+          <h2 className="type-head mb-12 lg:mb-16">
+            <FlipHeading text="How it works. 4 Steps" />
           </h2>
 
           <ol className="sm:grid sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-4 lg:gap-x-0">

@@ -107,3 +107,51 @@ body {
     transform: none;
   }
 }
+
+/* Split-flap reveal, for headings that sit below the fold.
+   Each character hinges at its top edge and falls into place, which is what a
+   flip-clock flap does. The perspective lives on the line so every character
+   shares one vanishing point instead of each rotating in its own little box. */
+.flip-line {
+  perspective: 640px;
+}
+
+.flip-char {
+  display: inline-block;
+  transform-origin: 50% 0;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+/* Armed by JS once mounted, so a client without scripting keeps the heading
+   plainly visible rather than stuck at zero opacity forever. */
+.flip-armed .flip-char {
+  opacity: 0;
+}
+
+.flip-play .flip-char {
+  animation: flip-char 0.42s cubic-bezier(0.2, 0.75, 0.3, 1) both;
+}
+
+@keyframes flip-char {
+  from {
+    opacity: 0;
+    transform: rotateX(-92deg);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: rotateX(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-armed .flip-char,
+  .flip-play .flip-char {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
+}
