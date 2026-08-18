@@ -7,6 +7,7 @@ import {
   getMarket,
   impliedProbability,
   marketState,
+  poolLabel,
   STATE_LABEL,
   type MarketState,
 } from "../../../lib/market-data";
@@ -147,11 +148,7 @@ export default async function MarketPage({
                 <dl>
                   <Row
                     label="Pool"
-                    value={
-                      sealed
-                        ? "sealed"
-                        : `${(totals?.total_pool ?? 0).toLocaleString("en-US")} pts`
-                    }
+                    value={poolLabel(totals, "sealed")}
                     mono
                   />
                   <Row

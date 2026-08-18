@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Masthead, Shell, SectionLabel } from "../shell";
-import { requireMembership } from "../lib/auth";
+import { isAdmin, requireMembership } from "../lib/auth";
 import { count } from "../lib/db";
 import { getBalance } from "../lib/points";
-import { listMarkets, marketState, STATE_LABEL } from "../lib/market-data";
+import {
+  listMarkets,
+  marketState,
+  poolLabel,
+  STATE_LABEL,
+} from "../lib/market-data";
 import { signOut } from "../lib/actions";
 
 export const metadata: Metadata = { title: "Your group — Sidebar" };
@@ -14,6 +19,7 @@ export const dynamic = "force-dynamic";
 
 export default async function GroupPage() {
   const { user, group } = await requireMembership();
+  const admin = isAdmin(group, user);
 
   const [balance, members, markets] = await Promise.all([
     getBalance(group.id, user.id),
@@ -33,7 +39,10 @@ export default async function GroupPage() {
             <dl className="mt-8 border-t border-foreground">
               <Row label="Group ID" value={group.link_id} mono />
               <Row label="Members" value={String(members)} mono />
-              <Row label="Signed in as" value={user.name} />
+              <Row
+                label="Signed in as"
+                value={admin ? `${user.name} · admin` : user.name}
+              />
               <Row
                 label="Your points"
                 value={balance.toLocaleString("en-US")}
@@ -46,6 +55,17 @@ export default async function GroupPage() {
               Anyone with the group ID and the password can join. Send them
               separately if you care about who gets in.
             </p>
+
+            {admin && (
+              <p className="mt-5">
+                <Link
+                  href="/group/admin"
+                  className="text-sm underline decoration-1 underline-offset-4 hover:text-muted"
+                >
+                  Admin view →
+                </Link>
+              </p>
+            )}
 
             <form action={signOut}>
               <button
@@ -98,12 +118,10 @@ export default async function GroupPage() {
                           {totals?.participants ?? 0}{" "}
                           {totals?.participants === 1 ? "bettor" : "bettors"}
                         </span>
-                        {/* Pool stays hidden while sealed — showing it would
-                            defeat the point of blind seeding. */}
+                        {/* The view returns no number until reveal (007);
+                            this only picks the words for its absence. */}
                         <span className="font-mono tabular-nums">
-                          {totals?.revealed
-                            ? `${totals.total_pool.toLocaleString("en-US")} pts`
-                            : "pool sealed"}
+                          {poolLabel(totals)}
                         </span>
                       </div>
                     </Link>

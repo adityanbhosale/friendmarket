@@ -18,7 +18,21 @@ export type Group = {
   name: string;
   link_id: string;
   created_at: string;
+  /** The admin. Null for groups opened before the column existed. */
+  created_by: string | null;
+  /** Where registration and health mail goes. Not on users.email, which is unique. */
+  admin_email: string | null;
 };
+
+/**
+ * Admin is a single person: whoever opened the group. There is no grant path
+ * and nothing to revoke, which is the point — the role exists so one named
+ * person holds the group ID and can see the state of the board, not to build
+ * a permission system a fifteen-person group chat does not need.
+ */
+export function isAdmin(group: Group, user: User): boolean {
+  return group.created_by !== null && group.created_by === user.id;
+}
 
 /**
  * The session cookie asserts a user and a group. It is signed, so it cannot be
@@ -53,5 +67,16 @@ export async function currentMembership(): Promise<{
 export async function requireMembership() {
   const membership = await currentMembership();
   if (!membership) redirect("/join");
+  return membership;
+}
+
+/**
+ * For the admin view. A member who is not the admin is sent to their own
+ * dashboard rather than shown a refusal: they are allowed to be here, just not
+ * on this page, and a 403 would overstate what happened.
+ */
+export async function requireAdmin() {
+  const membership = await requireMembership();
+  if (!isAdmin(membership.group, membership.user)) redirect("/group");
   return membership;
 }

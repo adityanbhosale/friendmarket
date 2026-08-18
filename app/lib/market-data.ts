@@ -39,7 +39,8 @@ export type SealedPool = {
 
 export type Totals = {
   market_id: string;
-  total_pool: number;
+  /** Null until reveal_at. The view withholds it; see migration 007. */
+  total_pool: number | null;
   participants: number;
   revealed: boolean;
 };
@@ -139,4 +140,27 @@ export function impliedProbability(
 
   const side = pools.find((p) => p.side_id === sideId);
   return ((side?.pool ?? 0) / total) * 100;
+}
+
+/**
+ * How a pool is written wherever one appears.
+ *
+ * Since 007 the database withholds the number until reveal, so this is no
+ * longer the thing keeping the seal — it decides what to show in the absence,
+ * which is still a UI question. Reading the value rather than the `revealed`
+ * flag means the two can never disagree on screen.
+ */
+export function poolLabel(
+  totals: Totals | null | undefined,
+  sealedText = "pool sealed",
+): string {
+  // Both conditions on purpose. `total_pool === null` is the post-007 schema
+  // withholding the number; `!revealed` still catches the pre-007 view, which
+  // always returned one. Checking both means this renders correctly whichever
+  // view it is talking to, so shipping the code and running the migration do
+  // not have to be the same instant.
+  if (!totals || !totals.revealed || totals.total_pool === null) {
+    return sealedText;
+  }
+  return `${totals.total_pool.toLocaleString("en-US")} pts`;
 }

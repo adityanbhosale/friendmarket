@@ -40,6 +40,23 @@ export function CreateGroupForm() {
           />
         </Field>
 
+        <Field label="Your email" htmlFor="email">
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            maxLength={254}
+            autoComplete="email"
+            placeholder="you@example.com"
+            className={INPUT}
+          />
+          <p className="mt-2 text-xs text-muted">
+            We send the group ID here. It&apos;s the one thing you can&apos;t
+            get back — there is no directory of groups to look yours up in.
+          </p>
+        </Field>
+
         <Field label="Group password" htmlFor="password" last>
           <input
             id="password"

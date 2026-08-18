@@ -17,6 +17,7 @@ import {
   DbError,
   dbMessage,
 } from "./db";
+import { looksLikeEmail, registrationMail, sendMail } from "./mail";
 import { hashPassword, verifyPassword } from "./password";
 import { createSession, destroySession, fingerprint } from "./session";
 import { currentMembership, type Group, type User } from "./auth";
@@ -83,9 +84,15 @@ async function createGroupImpl(
   const groupName = String(formData.get("group_name") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
 
-  if (!groupName || !name || !password) {
-    return { error: "Group name, your name, and a password are all required." };
+  if (!groupName || !name || !password || !email) {
+    return {
+      error: "Group name, your name, an email, and a password are all required.",
+    };
+  }
+  if (!looksLikeEmail(email)) {
+    return { error: "That email address doesn't look right." };
   }
   if (groupName.length > 60 || name.length > 40) {
     return { error: "That name is too long." };
@@ -98,6 +105,10 @@ async function createGroupImpl(
 
   const password_hash = await hashPassword(password);
 
+  // The creator exists before the group does, so the group can record who
+  // opened it in the same insert rather than needing a second write.
+  const user = await insert<User>("users", { name });
+
   // Retry on the unique index rather than checking first — a check would race
   // against another group being created in the same instant.
   let group: Group | null = null;
@@ -107,6 +118,8 @@ async function createGroupImpl(
         name: groupName,
         link_id: generateGroupId(),
         password_hash,
+        created_by: user.id,
+        admin_email: email,
       });
     } catch (err) {
       if (!(err instanceof DbError && err.isConflict)) throw err;
@@ -116,10 +129,23 @@ async function createGroupImpl(
     return { error: "Couldn't allocate a group ID. Try again." };
   }
 
-  const user = await insert<User>("users", { name });
   await insertVoid("group_members", { group_id: group.id, user_id: user.id });
   await allocateStartingPoints(group.id, user.id);
   await createSession(user.id, group.id);
+
+  // Last, and never fatal. The group exists either way; a mail outage must not
+  // read to the creator as a failed signup. sendMail already swallows its own
+  // failures, so this only guards against something unexpected in composing.
+  try {
+    const mail = registrationMail({
+      groupName: group.name,
+      linkId: group.link_id,
+      adminName: name,
+    });
+    await sendMail({ ...mail, to: email });
+  } catch (err) {
+    console.error("[createGroup] registration mail failed", err);
+  }
 
   redirect("/group");
 }

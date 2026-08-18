@@ -12,6 +12,7 @@ and run these in order:
 | `003_market_kind.sql` | `open_market` writes `kind = 'native'` (`markets_kind_check` rejects anything else) |
 | `004_void_reasons.sql` | Void reasons constrained to `empty_side` / `ambiguous` |
 | `005_resolve_after_close.sql` | Nothing settles — including voiding — before `close_at` |
+| `006_group_admin.sql` | `groups.created_by` (the admin) and `groups.admin_email`, plus a backfill |
 
 003 through 005 are fix-forward patches found by testing against the live
 database; 002 has been kept in step with them, so a from-scratch run is correct
