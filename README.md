@@ -57,6 +57,8 @@ against a disposable or staging database. It rolls back its own data.
 - `app/lib/db.ts` is the server-only PostgREST data-access layer.
 - There is no Supabase Auth. A signed cookie identifies one user in one group,
   and every request rechecks the membership row.
+- UUID aliases preserve sessions and recovery codes when a duplicate legacy
+  membership is merged into its canonical member.
 - Group passwords use scrypt. Personal recovery codes are high-entropy bearer
   credentials stored only as SHA-256 digests.
 - Phone numbers become keyed hashes and stable display codes; the raw value is

@@ -342,13 +342,30 @@ export async function recoverGroup(
       recovery_code_hash: `eq.${hashRecoveryCode(normalizedCode)}`,
     }),
   ]);
-  const membership =
-    group && user
+  let recoveredUserId = user?.id ?? null;
+  let membership =
+    group && recoveredUserId
       ? await selectOne<{ group_id: string }>("group_members", {
           group_id: `eq.${group.id}`,
-          user_id: `eq.${user.id}`,
+          user_id: `eq.${recoveredUserId}`,
         })
       : null;
+  if (group && recoveredUserId && !membership) {
+    const alias = await selectOne<{ canonical_user_id: string }>(
+      "member_uuid_aliases",
+      {
+        group_id: `eq.${group.id}`,
+        alias_user_id: `eq.${recoveredUserId}`,
+      },
+    );
+    if (alias) {
+      recoveredUserId = alias.canonical_user_id;
+      membership = await selectOne<{ group_id: string }>("group_members", {
+        group_id: `eq.${group.id}`,
+        user_id: `eq.${recoveredUserId}`,
+      });
+    }
+  }
 
   if (!group || !user || !membership) {
     await insertVoid("join_attempts", {
@@ -371,7 +388,7 @@ export async function recoverGroup(
     console.error("[recovery audit]", error);
   }
 
-  await createSession(user.id, group.id);
+  await createSession(recoveredUserId!, group.id);
   redirect("/group");
 }
 

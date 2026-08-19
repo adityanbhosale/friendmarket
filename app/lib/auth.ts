@@ -33,6 +33,12 @@ export type GroupMembership = {
   phone_attached_at: string | null;
 };
 
+type MemberUuidAlias = {
+  group_id: string;
+  alias_user_id: string;
+  canonical_user_id: string;
+};
+
 /**
  * Admin is a single person: whoever opened the group. There is no grant path
  * and nothing to revoke, which is the point — the role exists so one named
@@ -58,14 +64,26 @@ export async function currentMembership(): Promise<{
   const session = await getSession();
   if (!session) return null;
 
-  const membership = await selectOne<GroupMembership>(
+  let userId = session.uid;
+  let membership = await selectOne<GroupMembership>(
     "group_members",
     { group_id: `eq.${session.gid}`, user_id: `eq.${session.uid}` },
   );
+  const alias = await selectOne<MemberUuidAlias>("member_uuid_aliases", {
+    group_id: `eq.${session.gid}`,
+    alias_user_id: `eq.${session.uid}`,
+  });
+  if (alias) {
+    userId = alias.canonical_user_id;
+    membership = await selectOne<GroupMembership>("group_members", {
+      group_id: `eq.${session.gid}`,
+      user_id: `eq.${userId}`,
+    });
+  }
   if (!membership) return null;
 
   const [user, group] = await Promise.all([
-    selectOne<User>("users", { id: `eq.${session.uid}` }),
+    selectOne<User>("users", { id: `eq.${userId}` }),
     selectOne<Group>("groups", { id: `eq.${session.gid}` }),
   ]);
   if (!user || !group) return null;

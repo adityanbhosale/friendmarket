@@ -41,6 +41,17 @@ create table public.group_members (
   unique (group_id, identity_code)
 );
 
+create table public.member_uuid_aliases (
+  group_id uuid not null references public.groups(id) on delete cascade,
+  alias_user_id uuid not null references public.users(id) on delete cascade,
+  canonical_user_id uuid not null references public.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (group_id, alias_user_id),
+  foreign key (group_id, canonical_user_id)
+    references public.group_members(group_id, user_id) on delete cascade,
+  check (alias_user_id <> canonical_user_id)
+);
+
 create table public.markets (
   id uuid primary key default gen_random_uuid(),
   group_id uuid not null references public.groups(id) on delete cascade,
