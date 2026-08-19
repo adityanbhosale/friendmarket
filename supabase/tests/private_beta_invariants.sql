@@ -16,6 +16,7 @@ declare
   v_no uuid;
   v_before integer;
   v_after integer;
+  v_entry jsonb;
   v_failed boolean := false;
 begin
   v_created := public.create_group_with_owner_phone(
@@ -29,6 +30,34 @@ begin
     v_group, 'Member', repeat('b', 64), repeat('5', 64),
     'SB-DDDD-EEEE-FFFF', 1000
   );
+
+  select count(*) into v_before
+  from public.group_members where group_id = v_group;
+  v_entry := public.enter_group_member_phone(
+    v_group, '  member  ', repeat('9', 64), repeat('5', 64),
+    'SB-DDDD-EEEE-FFFF', 1000
+  );
+  select count(*) into v_after
+  from public.group_members where group_id = v_group;
+  if (v_entry->>'user_id')::uuid <> v_member
+    or (v_entry->>'created')::boolean
+    or v_after <> v_before
+  then
+    raise exception 'phone login did not reuse the registered member UUID';
+  end if;
+
+  v_failed := false;
+  begin
+    perform public.enter_group_member_phone(
+      v_group, 'Member', repeat('8', 64), repeat('8', 64),
+      'SB-PPPP-QQQQ-RRRR', 1000
+    );
+  exception when unique_violation then
+    v_failed := true;
+  end;
+  if not v_failed then
+    raise exception 'a duplicate normalized member name created another UUID';
+  end if;
 
   insert into public.imessage_setup_tokens (
     token_hash, conversation_hash, sender_hash, group_id, expires_at

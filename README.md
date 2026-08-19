@@ -24,6 +24,10 @@ Creating a group through `/start` creates its owner, phone-derived member code,
 membership, starting allocation, session, and recovery code atomically. Raw
 phone numbers are normalized in memory and never stored.
 
+Entering an existing group with the same phone number and normalized name
+reopens the existing member UUID rather than allocating another identity or
+another starting balance. A conflicting phone/name combination is rejected.
+
 ## Required environment variables
 
 | Variable | Purpose |
@@ -57,6 +61,8 @@ against a disposable or staging database. It rolls back its own data.
   credentials stored only as SHA-256 digests.
 - Phone numbers become keyed hashes and stable display codes; the raw value is
   not written to Supabase.
+- Signed HTTP-only sessions persist for 30 days. Returning to the landing page
+  or new-group page with a valid cookie routes the member back to `/group`.
 - Postgres RPCs atomically create memberships, join markets, place stakes,
   enforce subject restrictions, and resolve markets.
 - Before reveal, SQL views expose only the number of distinct participants.

@@ -84,6 +84,7 @@ async function clientFingerprint(): Promise<string> {
 // ---------------------------------------------------------------------------
 
 type CreatedGroup = { group_id: string; user_id: string };
+type EnteredGroup = { user_id: string; created: boolean };
 
 async function createGroupImpl(
   _prev: FormState,
@@ -259,16 +260,16 @@ async function joinGroupImpl(
     return { error: "That group ID and password don't match." };
   }
 
-  let userId = "";
+  let entry: EnteredGroup | null = null;
   let recoveryCode = "";
-  for (let attempt = 0; attempt < 3 && !userId; attempt++) {
+  for (let attempt = 0; attempt < 3 && !entry; attempt++) {
     recoveryCode = generateRecoveryCode();
     const normalizedCode = normalizeRecoveryCode(recoveryCode)!;
     try {
-      userId = await rpc<string>(
+      entry = await rpc<EnteredGroup>(
         imessageToken
-          ? "join_group_member_phone_imessage"
-          : "join_group_member_phone",
+          ? "enter_group_member_phone_imessage"
+          : "enter_group_member_phone",
         {
           ...(imessageToken
             ? { p_token_hash: hashImessageSetupToken(imessageToken) }
@@ -292,7 +293,7 @@ async function joinGroupImpl(
       if (!(err instanceof DbError && isGeneratedCredentialConflict(err))) throw err;
     }
   }
-  if (!userId) return { error: "Couldn't create your membership. Try again." };
+  if (!entry) return { error: "Couldn't enter that group. Try again." };
 
   try {
     await insertVoid("join_attempts", {
@@ -305,7 +306,8 @@ async function joinGroupImpl(
     console.error("[join audit]", error);
   }
 
-  await createSession(userId, group.id);
+  await createSession(entry.user_id, group.id);
+  if (!entry.created) redirect("/group");
   return { recoveryCode, groupId: linkId };
 }
 

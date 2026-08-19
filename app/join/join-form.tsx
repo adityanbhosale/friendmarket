@@ -68,8 +68,8 @@ export function JoinForm({
             className={INPUT}
           />
           <p className="mt-2 text-xs text-muted">
-            Used privately to assign your stable member code. It is never shown
-            to the group.
+            New members get a stable member code. Returning members use the
+            same number to reopen their existing UUID, points, and markets.
           </p>
         </Field>
 
@@ -100,7 +100,7 @@ export function JoinForm({
         {state.error ?? ""}
       </p>
       <p className="mt-5 text-sm text-muted">
-        Returning on a new device?{" "}
+        No longer have access to that phone number?{" "}
         <Link href="/recover" className="underline underline-offset-4 hover:text-foreground">
           Use your recovery code
         </Link>

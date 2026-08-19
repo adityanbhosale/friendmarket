@@ -16,8 +16,9 @@ export default function JoinPage() {
               Start with the code your group gave you.
             </h1>
             <p className="measure mt-5 leading-relaxed text-muted">
-              Next, attach your name and phone identity, then enter the shared
-              password. Sidebar never displays your phone number.
+              Next, enter your name, phone number, and the shared password.
+              Sidebar uses returning phone identities to reopen the same member
+              UUID instead of making a duplicate account.
             </p>
           </div>
 

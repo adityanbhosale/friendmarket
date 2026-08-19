@@ -27,8 +27,8 @@ export default async function JoinByLinkPage({
               Now identify yourself inside the group.
             </h1>
             <p className="measure mt-5 leading-relaxed text-muted">
-              Your phone creates a stable member code. The shared password
-              proves you were meant to have access.
+              Your phone opens the same member UUID every time. The shared
+              password proves you were meant to have access.
             </p>
           </div>
 

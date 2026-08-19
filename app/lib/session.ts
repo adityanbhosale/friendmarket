@@ -18,6 +18,7 @@ export { SESSION_COOKIE, fingerprint, type Session } from "./session-token";
  */
 export async function createSession(uid: string, gid: string): Promise<void> {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS;
+  const expires = new Date(exp * 1000);
   const store = await cookies();
 
   store.set(SESSION_COOKIE, encodeSession({ uid, gid, exp }), {
@@ -27,6 +28,8 @@ export async function createSession(uid: string, gid: string): Promise<void> {
     sameSite: "lax",
     path: "/",
     maxAge: MAX_AGE_SECONDS,
+    expires,
+    priority: "high",
   });
 }
 

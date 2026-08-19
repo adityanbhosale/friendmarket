@@ -591,6 +591,12 @@ export default function Docs() {
 
             <Section id="house-rules" n="11" title="House rules">
               <P>
+                <strong>One member, one UUID.</strong> A returning member uses
+                the same phone number and name to reopen the UUID that already
+                owns their points, stakes, and market history. Sidebar refuses
+                a second UUID with the same registered name inside a group.
+              </P>
+              <P>
                 <strong>The subject may watch, but may not bet.</strong> A person
                 market records the subject&apos;s private phone identity when it is
                 opened. If that identity belongs to a group member now or later,
