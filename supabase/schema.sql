@@ -521,6 +521,9 @@ declare
   v_user_id uuid;
   v_registered_name text;
   v_name_key text;
+  v_name_matches integer;
+  v_phone_attached_at timestamptz;
+  v_needs_recovery boolean;
 begin
   if not exists (select 1 from public.groups where id = p_group_id)
     or length(btrim(coalesce(p_user_name, ''))) not between 1 and 40
@@ -552,14 +555,39 @@ begin
     return jsonb_build_object('user_id', v_user_id, 'created', false);
   end if;
 
-  if exists (
-    select 1 from public.group_members gm
+  select count(*) into v_name_matches
+  from public.group_members gm
+  join public.users u on u.id = gm.user_id
+  where gm.group_id = p_group_id
+    and lower(regexp_replace(btrim(u.name), '[[:space:]]+', ' ', 'g')) = v_name_key;
+  if v_name_matches > 1 then
+    raise exception 'multiple legacy members use that name; use a recovery code'
+      using errcode = '23505';
+  elsif v_name_matches = 1 then
+    select gm.user_id, gm.phone_attached_at, u.recovery_code_hash is null
+      into v_user_id, v_phone_attached_at, v_needs_recovery
+    from public.group_members gm
     join public.users u on u.id = gm.user_id
     where gm.group_id = p_group_id
-      and lower(regexp_replace(btrim(u.name), '[[:space:]]+', ' ', 'g')) = v_name_key
-  ) then
-    raise exception 'that name is already registered; use its original phone number or recovery code'
-      using errcode = '23505';
+      and lower(regexp_replace(btrim(u.name), '[[:space:]]+', ' ', 'g')) = v_name_key;
+    if v_phone_attached_at is not null then
+      raise exception 'that name is already registered; use its original phone number or recovery code'
+        using errcode = '23505';
+    end if;
+    update public.group_members
+    set phone_hash = p_phone_hash,
+        identity_code = p_identity_code,
+        phone_attached_at = now()
+    where group_id = p_group_id and user_id = v_user_id;
+    if v_needs_recovery then
+      update public.users set recovery_code_hash = p_recovery_code_hash
+      where id = v_user_id;
+    end if;
+    return jsonb_build_object(
+      'user_id', v_user_id,
+      'created', false,
+      'recovery_created', v_needs_recovery
+    );
   end if;
 
   insert into public.users (name, recovery_code_hash)

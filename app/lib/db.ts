@@ -123,7 +123,10 @@ export async function insertVoid(
 
 /** Exact row count matching a filter, without transferring the rows. */
 export async function count(table: string, query: Query = {}): Promise<number> {
-  const res = await fetch(`${REST}/${table}${qs({ select: "id", ...query })}`, {
+  // Some relationship tables use composite primary keys and have no `id`
+  // column. Range 0-0 transfers at most one row, so `select=*` keeps this
+  // generic without making counts expensive.
+  const res = await fetch(`${REST}/${table}${qs({ select: "*", ...query })}`, {
     headers: {
       apikey: KEY!,
       Authorization: `Bearer ${KEY!}`,
