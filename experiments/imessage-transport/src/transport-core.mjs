@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 const CORRELATION_TAG = /\b(?:DM|G\d+)-[A-Z0-9]+-\d+\b/i;
-const EXPLICIT_TRIGGER = /^\s*(?:@sidebar|sidebar)\b/i;
+const EXPLICIT_TRIGGER = /^\s*@sidebar\b/i;
 
 export function isTaggedTestTraffic(text) {
   return EXPLICIT_TRIGGER.test(text) || CORRELATION_TAG.test(text);

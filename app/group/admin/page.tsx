@@ -43,7 +43,7 @@ export default async function AdminPage() {
     .filter(({ market }) => marketState(market) === "closed")
     .map(({ market }) => ({
       market,
-      proposer: nameOf.get(market.proposer_id) ?? "someone who has left",
+      adjudicator: nameOf.get(market.adjudicator_id) ?? "someone who has left",
     }));
 
   const inviteUrl = `${SITE_URL}/join/${group.link_id}`;
@@ -99,7 +99,7 @@ export default async function AdminPage() {
               </p>
             ) : (
               <ul className="mt-4 border-t border-foreground">
-                {awaiting.map(({ market, proposer }) => (
+                {awaiting.map(({ market, adjudicator }) => (
                   <li
                     key={market.id}
                     className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-rule py-4"
@@ -111,7 +111,7 @@ export default async function AdminPage() {
                       {market.question}
                     </Link>
                     <span className="text-sm text-muted">
-                      closed — {proposer} resolves
+                      closed — {adjudicator} adjudicates
                     </span>
                   </li>
                 ))}

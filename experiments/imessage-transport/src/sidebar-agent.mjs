@@ -1,4 +1,8 @@
-import { isStartRequest, parseNaturalLanguageIntent } from "./intent-parser.mjs";
+import {
+  isAgentInvocation,
+  isStartRequest,
+  parseNaturalLanguageIntent,
+} from "./intent-parser.mjs";
 import { SidebarDbError } from "./sidebar-client.mjs";
 import { fingerprint } from "./transport-core.mjs";
 
@@ -15,6 +19,7 @@ export function createSidebarAgent({
   assertTimeZone(timezone);
 
   return async function handleMessage(envelope) {
+    if (!isAgentInvocation(envelope.text)) return null;
     const conversationHash = fingerprint(envelope.conversationId);
     const senderHash = fingerprint(envelope.senderId);
     const binding = await resolveBinding(conversationHash, senderHash, {
@@ -24,7 +29,7 @@ export function createSidebarAgent({
 
     if (isStartRequest(envelope.text)) {
       if (binding.status === "bound") {
-        return "This conversation and your iMessage identity are already connected to Sidebar. Send “Sidebar, help” to see what I can do.";
+        return "This conversation and your iMessage identity are already connected to Sidebar. Send “@sidebar, help” to see what I can do.";
       }
       if (!issueSetupLink) {
         return "iMessage setup is not configured on this Sidebar agent yet.";
@@ -45,10 +50,10 @@ export function createSidebarAgent({
     }
 
     if (binding.status === "unbound_group") {
-      return "This iMessage group is not connected to Sidebar. Send “Sidebar, start” to create or connect a group.";
+      return "This iMessage group is not connected to Sidebar. Send “@sidebar, start” to create or connect a group.";
     }
     if (binding.status === "unbound_sender") {
-      return "I recognize this group, but your iMessage identity is not connected. Send “Sidebar, start” for a private setup link.";
+      return "I recognize this group, but your iMessage identity is not connected. Send “@sidebar, start” for a private setup link.";
     }
 
     try {
@@ -90,8 +95,8 @@ export async function executeIntent({
     case "help":
       return [
         "I can create and list markets, show odds/pot/time, place Yes or No bets, and resolve markets.",
-        "Try: “Sidebar, create a market: Will Dan be late? closes in 2 hours”",
-        "Or: “Sidebar, put 40 points on yes in market 3”",
+        "Try: “@sidebar, create a market: Will Dan be late? closes in 2 hours”",
+        "Or: “@sidebar, put 40 points on Dan being late”",
       ].join("\n");
     case "list_markets":
       return formatMarketList(marketRows, now);
@@ -184,10 +189,10 @@ function formatMarketList(rows, now) {
   if (rows.length === 0) return "There are no markets in this Sidebar group yet.";
   return rows
     .slice(0, 10)
-    .map(({ market, totals }) => {
+    .map(({ market, totals, adjudicatorName }) => {
       const state = marketState(market, now);
       const pot = totals?.revealed ? ` · ${totals.total_pool ?? 0} point pot` : " · pot sealed";
-      return `#${market.display_num} ${market.question} — ${titleCase(state)}${pot}`;
+      return `#${market.display_num} ${market.question} — ${titleCase(state)}${pot} · adjudicator ${adjudicatorName}`;
     })
     .join("\n");
 }
@@ -197,6 +202,7 @@ function formatMarket(result, now, timezone) {
   const lines = [
     `#${market.display_num} ${market.question}`,
     `${titleCase(marketState(market, now))} · ${timeDescription(market, now, timezone)}`,
+    `Adjudicator: ${result.adjudicatorName}`,
     formatOdds(result),
   ];
   const myStake = result.myStakes.reduce((sum, stake) => sum + stake.amount, 0);

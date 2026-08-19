@@ -18,6 +18,7 @@ export type Market = {
   question: string;
   criteria: string;
   proposer_id: string;
+  adjudicator_id: string;
   reveal_at: string;
   close_at: string;
   resolve_at: string;

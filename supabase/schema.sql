@@ -42,6 +42,7 @@ create table public.markets (
   question text not null check (length(btrim(question)) between 1 and 200),
   criteria text not null check (length(btrim(criteria)) between 1 and 500),
   proposer_id uuid not null references public.users(id),
+  adjudicator_id uuid not null references public.users(id),
   reveal_at timestamptz not null,
   close_at timestamptz not null,
   resolve_at timestamptz not null,
@@ -54,6 +55,10 @@ create table public.markets (
     check (reveal_at < close_at and close_at < resolve_at),
   unique (group_id, display_num)
 );
+
+alter table public.markets add constraint markets_adjudicator_is_group_member
+  foreign key (group_id, adjudicator_id)
+  references public.group_members(group_id, user_id);
 
 create table public.market_sides (
   id uuid primary key default gen_random_uuid(),
@@ -197,6 +202,7 @@ create function public.open_market(
 returns uuid language plpgsql as $$
 declare
   v_market_id uuid;
+  v_adjudicator_id uuid;
   v_next integer;
 begin
   if not exists (
@@ -209,16 +215,22 @@ begin
     raise exception 'question is required' using errcode = '22023';
   end if;
 
+  select gm.user_id into v_adjudicator_id
+  from public.group_members gm
+  where gm.group_id = p_group_id
+  order by (gm.user_id = p_proposer_id), random()
+  limit 1;
+
   perform pg_advisory_xact_lock(hashtext(p_group_id::text));
   select coalesce(max(display_num), 0) + 1 into v_next
   from public.markets where group_id = p_group_id;
 
   insert into public.markets (
     group_id, display_num, kind, question, criteria, proposer_id,
-    reveal_at, close_at, resolve_at
+    adjudicator_id, reveal_at, close_at, resolve_at
   ) values (
     p_group_id, v_next, 'native', btrim(p_question), btrim(p_criteria),
-    p_proposer_id, p_reveal_at, p_close_at, p_resolve_at
+    p_proposer_id, v_adjudicator_id, p_reveal_at, p_close_at, p_resolve_at
   ) returning id into v_market_id;
 
   insert into public.market_sides (market_id, label, ordinal)
@@ -277,7 +289,7 @@ create function public.resolve_market(
 returns text language plpgsql as $$
 declare
   v_group_id uuid;
-  v_proposer uuid;
+  v_adjudicator uuid;
   v_resolved timestamptz;
   v_close_at timestamptz;
   v_resolve_at timestamptz;
@@ -286,15 +298,15 @@ declare
   v_reason text;
   r record;
 begin
-  select group_id, proposer_id, resolved_at, close_at, resolve_at
-    into v_group_id, v_proposer, v_resolved, v_close_at, v_resolve_at
+  select group_id, adjudicator_id, resolved_at, close_at, resolve_at
+    into v_group_id, v_adjudicator, v_resolved, v_close_at, v_resolve_at
   from public.markets where id = p_market_id for update;
   if not found then raise exception 'no such market' using errcode = '22023'; end if;
   if v_resolved is not null then raise exception 'market already resolved' using errcode = '22023'; end if;
   if now() < v_close_at then raise exception 'market has not closed yet' using errcode = '22023'; end if;
   if now() < v_resolve_at then raise exception 'market is not ready to resolve yet' using errcode = '22023'; end if;
-  if p_user_id is distinct from v_proposer then
-    raise exception 'only the proposer can resolve this market' using errcode = '42501';
+  if p_user_id is distinct from v_adjudicator then
+    raise exception 'only the adjudicator can resolve this market' using errcode = '42501';
   end if;
   if p_outcome_side is not null and not exists (
     select 1 from public.market_sides where id = p_outcome_side and market_id = p_market_id

@@ -550,24 +550,24 @@ export default function Docs() {
                 follow-up question.
               </P>
               <P>
+                When a native market opens, Sidebar randomly assigns a current
+                group member as adjudicator. It prefers someone other than the
+                proposer when the group has another member; a one-person group
+                falls back to its proposer. Only that assigned member can
+                settle the market.
+              </P>
+              <P>
                 If the criteria turn out to be ambiguous, the market is voided,
                 not lawyered. Nobody’s evening has ever been improved by a
                 semantic argument about what “rejected” was supposed to mean.
               </P>
 
-              <Table caption="The clock">
-                <Row label="Proposer resolves within" value="48h of resolution" />
-                <Row label="Dispute window" value="24h thereafter" />
-                <Row label="Who may dispute" value="any bettor in the market" />
-                <Row label="Effect of a dispute" value="payout freezes" strong />
-                <Row label="Jury" value="3 participants with no stake" />
-                <Row label="Standard" value="majority, final, no appeal" />
+              <Table caption="Current native-market rule">
+                <Row label="Adjudicator" value="random eligible group member" />
+                <Row label="Resolution opens" value="at the fixed resolution time" />
+                <Row label="Who may resolve" value="assigned adjudicator only" strong />
+                <Row label="Ambiguous outcome" value="void and refund every stake" />
               </Table>
-
-              <P>
-                There is no appeal above the jury, because the appeal is you not
-                proposing sloppy markets next time.
-              </P>
               <P>
                 A voided market refunds every stake in full. A market is voided
                 if the criteria are ambiguous, the event is cancelled, or the
