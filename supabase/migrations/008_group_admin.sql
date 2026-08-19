@@ -12,7 +12,7 @@ set created_by = (
   select gm.user_id
   from public.group_members gm
   where gm.group_id = g.id
-  order by gm.created_at asc, gm.user_id asc
+  order by gm.joined_at asc, gm.user_id asc
   limit 1
 )
 where g.created_by is null;

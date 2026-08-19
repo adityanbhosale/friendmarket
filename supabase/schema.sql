@@ -30,7 +30,7 @@ create table public.groups (
 create table public.group_members (
   group_id uuid not null references public.groups(id) on delete cascade,
   user_id uuid not null references public.users(id) on delete cascade,
-  created_at timestamptz not null default now(),
+  joined_at timestamptz not null default now(),
   primary key (group_id, user_id)
 );
 
