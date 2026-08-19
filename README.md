@@ -27,6 +27,8 @@ phone numbers are normalized in memory and never stored.
 Entering an existing group with the same phone number and normalized name
 reopens the existing member UUID rather than allocating another identity or
 another starting balance. A conflicting phone/name combination is rejected.
+One-time legacy members without a phone can claim their existing UUID using the
+registered name and shared password; Sidebar then issues a recovery code.
 
 ## Required environment variables
 

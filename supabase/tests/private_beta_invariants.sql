@@ -9,6 +9,7 @@ declare
   v_group uuid;
   v_owner uuid;
   v_member uuid;
+  v_legacy uuid;
   v_imessage_member uuid;
   v_market uuid;
   v_adjudicator uuid;
@@ -57,6 +58,30 @@ begin
   end;
   if not v_failed then
     raise exception 'a duplicate normalized member name created another UUID';
+  end if;
+
+  insert into public.users (name) values ('Legacy member') returning id into v_legacy;
+  insert into public.group_members (
+    group_id, user_id, phone_hash, identity_code, phone_attached_at
+  ) values (
+    v_group, v_legacy, repeat('8', 64), 'SB-SSSS-TTTT-UUUU', null
+  );
+  insert into public.points_ledger (group_id, user_id, delta, reason)
+  values (v_group, v_legacy, 1000, 'allocation');
+  v_entry := public.enter_group_member_phone(
+    v_group, ' legacy   MEMBER ', repeat('7', 64), repeat('8', 64),
+    'SB-SSSS-TTTT-UUUU', 1000
+  );
+  if (v_entry->>'user_id')::uuid <> v_legacy
+    or (v_entry->>'created')::boolean
+    or not (v_entry->>'recovery_created')::boolean
+    or not exists (
+      select 1 from public.group_members
+      where group_id = v_group and user_id = v_legacy
+        and phone_attached_at is not null
+    )
+  then
+    raise exception 'legacy member claim did not preserve and attach its UUID';
   end if;
 
   insert into public.imessage_setup_tokens (

@@ -84,7 +84,11 @@ async function clientFingerprint(): Promise<string> {
 // ---------------------------------------------------------------------------
 
 type CreatedGroup = { group_id: string; user_id: string };
-type EnteredGroup = { user_id: string; created: boolean };
+type EnteredGroup = {
+  user_id: string;
+  created: boolean;
+  recovery_created?: boolean;
+};
 
 async function createGroupImpl(
   _prev: FormState,
@@ -307,7 +311,7 @@ async function joinGroupImpl(
   }
 
   await createSession(entry.user_id, group.id);
-  if (!entry.created) redirect("/group");
+  if (!entry.created && !entry.recovery_created) redirect("/group");
   return { recoveryCode, groupId: linkId };
 }
 
