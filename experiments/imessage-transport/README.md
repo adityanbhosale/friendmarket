@@ -95,11 +95,11 @@ Then start with no writes:
 npm run watch:self:dry
 ```
 
-Send `Sidebar G1-SELF-01 ping` from the same iMessage account. Once it is
+Send `@sidebar G1-SELF-01 ping` from the same iMessage account. Once it is
 recorded as `would_reply`, run `npm run watch:self` and send
-`Sidebar G1-SELF-02 ping`; the exact group should receive `ACK G1-SELF-02`.
-Only messages beginning with `Sidebar` in that exact conversation are adapted;
-all other from-me traffic remains ignored. Replies do not begin with `Sidebar`,
+`@sidebar G1-SELF-02 ping`; the exact group should receive `ACK G1-SELF-02`.
+Only messages beginning with `@sidebar` in that exact conversation are adapted;
+all other from-me traffic remains ignored. Replies do not begin with `@sidebar`,
 and generated `ACK` messages are rejected explicitly, so they cannot recursively
 invoke the watcher. A separate circuit breaker also blocks identical replies
 within ten seconds and caps total replies per minute. Never enable this mode on
@@ -145,11 +145,12 @@ Sidebar backend:
 - resolve a market as Yes, No, or Void; and
 - show the resulting payouts.
 
-Market-specific membership, market deletion, and random adjudicator selection
-are not in the current database model. The agent says so instead of pretending
-to perform them. Native iMessage group membership is never changed.
+Market-specific membership and market deletion are not in the current database
+model. Native iMessage group membership is never changed. Each new market gets
+a randomly selected current group member as adjudicator, preferring someone
+other than the proposer when possible.
 
-### 1. Create or connect with `Sidebar, start`
+### 1. Create or connect with `@sidebar, start`
 
 After migration `010_optional_imessage_links.sql` is applied, configure these
 values only in the root `.env.local`:
@@ -168,7 +169,7 @@ Keep the secret stable: it creates non-reversible, keyed hashes for native
 conversation and sender identifiers. Raw phone numbers and chat IDs are never
 stored in Supabase.
 
-An unconnected participant sends `Sidebar, start`. The bot acknowledges in the
+An unconnected participant sends `@sidebar, start`. The bot acknowledges in the
 group and sends that participant a direct iMessage containing a single-use
 browser link that expires after 15 minutes. The link is never posted to the
 shared group. The page then:
@@ -211,14 +212,14 @@ responses identify the intended group and user.
 Common phrasing is parsed locally and costs nothing:
 
 ```text
-Sidebar, show markets
-Sidebar, what are the odds on market 3?
-Sidebar, put 40 points on yes in market 3
-Sidebar, create a market: Will Dan be late? closes in 2 hours
-Sidebar, resolve market 3 as yes
+@sidebar, show markets
+@sidebar, what are the odds on market 3?
+@sidebar, put 40 points on Dan being late
+@sidebar, create a market: Will Dan be late? closes in 2 hours
+@sidebar, resolve Dan being late as yes
 ```
 
-Every request must begin with `Sidebar`, `@Sidebar`, or `Hey Sidebar`. Even an
+Every request must begin with `@sidebar`. Even an
 otherwise clear market instruction is ignored without that prefix, so ordinary
 group conversation cannot accidentally invoke parsing, an API call, or a
 database action.

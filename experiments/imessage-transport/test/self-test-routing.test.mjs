@@ -18,7 +18,7 @@ function fromMeMessage(overrides = {}) {
     chatId: CHAT_ID,
     chatKind: "group",
     participant: null,
-    text: "Sidebar, show markets",
+    text: "@sidebar, show markets",
     kind: "text",
     service: "iMessage",
     isFromMe: true,

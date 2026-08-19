@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Masthead, Shell, SectionLabel } from "../../../shell";
 import { requireMembership } from "../../../lib/auth";
+import { selectOne } from "../../../lib/db";
 import { getBalance } from "../../../lib/points";
 import {
   getMarket,
@@ -40,11 +41,14 @@ export default async function MarketPage({
   const { market, sides, pools, totals, myStakes } = data;
   const state = marketState(market);
   const resolutionReady = canResolveAt(market);
-  const balance = await getBalance(group.id, user.id);
+  const [balance, adjudicator] = await Promise.all([
+    getBalance(group.id, user.id),
+    selectOne<{ name: string }>("users", { id: `eq.${market.adjudicator_id}` }),
+  ]);
 
-  const isProposer = market.proposer_id === user.id;
+  const isAdjudicator = market.adjudicator_id === user.id;
   const canStake = state === "seeding" || state === "open";
-  const canResolve = isProposer && state === "closed" && resolutionReady;
+  const canResolve = isAdjudicator && state === "closed" && resolutionReady;
   const sealed = state === "seeding";
 
   const stakedOn = (sideId: string) =>
@@ -68,7 +72,8 @@ export default async function MarketPage({
             <dl className="mt-8 border-t border-rule text-sm">
               <Row label="Seeding ends" value={when(market.reveal_at)} />
               <Row label="Closes" value={when(market.close_at)} />
-              <Row label="Resolution opens" value={when(market.resolve_at)} last />
+              <Row label="Resolution opens" value={when(market.resolve_at)} />
+              <Row label="Adjudicator" value={adjudicator?.name ?? "Unknown member"} last />
             </dl>
           </div>
 
@@ -198,9 +203,9 @@ export default async function MarketPage({
                   </p>
                 )}
 
-                {state === "closed" && resolutionReady && !isProposer && (
+                {state === "closed" && resolutionReady && !isAdjudicator && (
                   <p className="border-t border-foreground pt-6 text-sm text-muted">
-                    Closed. Waiting on whoever opened it to settle.
+                    Closed. Waiting on the assigned adjudicator to settle.
                   </p>
                 )}
               </div>

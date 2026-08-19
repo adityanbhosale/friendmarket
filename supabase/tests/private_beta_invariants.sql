@@ -11,6 +11,7 @@ declare
   v_member uuid;
   v_imessage_member uuid;
   v_market uuid;
+  v_adjudicator uuid;
   v_yes uuid;
   v_no uuid;
   v_before integer;
@@ -80,6 +81,10 @@ begin
     v_group, v_owner, 'Will the invariant hold?', 'The test says so.',
     now() + interval '1 hour', now() + interval '2 hours', now() + interval '3 hours'
   );
+  select adjudicator_id into v_adjudicator from public.markets where id = v_market;
+  if v_adjudicator is null or v_adjudicator = v_owner then
+    raise exception 'market did not select another eligible member as adjudicator';
+  end if;
   select id into v_yes from public.market_sides where market_id = v_market and ordinal = 0;
   select id into v_no from public.market_sides where market_id = v_market and ordinal = 1;
 
@@ -102,7 +107,7 @@ begin
 
   v_failed := false;
   begin
-    perform public.resolve_market(v_market, v_owner, v_yes);
+    perform public.resolve_market(v_market, v_adjudicator, v_yes);
   exception when invalid_parameter_value then
     v_failed := true;
   end;
@@ -116,14 +121,23 @@ begin
 
   v_failed := false;
   begin
-    perform public.resolve_market(v_market, v_owner, v_yes);
+    perform public.resolve_market(v_market, v_adjudicator, v_yes);
   exception when invalid_parameter_value then
     v_failed := true;
   end;
   if not v_failed then raise exception 'market resolved before resolve_at'; end if;
 
   update public.markets set resolve_at = now() - interval '1 hour' where id = v_market;
-  if public.resolve_market(v_market, v_owner, v_yes) <> 'resolved' then
+
+  v_failed := false;
+  begin
+    perform public.resolve_market(v_market, v_owner, v_yes);
+  exception when insufficient_privilege then
+    v_failed := true;
+  end;
+  if not v_failed then raise exception 'non-adjudicator resolved a market'; end if;
+
+  if public.resolve_market(v_market, v_adjudicator, v_yes) <> 'resolved' then
     raise exception 'market did not resolve';
   end if;
   if public.points_balance(v_group, v_owner) <> 1300
@@ -135,6 +149,7 @@ begin
     v_group, v_owner, 'Will an empty winning side void?', 'Yes.',
     now() + interval '1 hour', now() + interval '2 hours', now() + interval '3 hours'
   );
+  select adjudicator_id into v_adjudicator from public.markets where id = v_market;
   select id into v_yes from public.market_sides where market_id = v_market and ordinal = 0;
   select id into v_no from public.market_sides where market_id = v_market and ordinal = 1;
   perform public.place_stake(v_market, v_yes, v_owner, 100);
@@ -143,7 +158,7 @@ begin
       close_at = now() - interval '2 hours',
       resolve_at = now() - interval '1 hour'
   where id = v_market;
-  if public.resolve_market(v_market, v_owner, v_no) <> 'empty_side' then
+  if public.resolve_market(v_market, v_adjudicator, v_no) <> 'empty_side' then
     raise exception 'empty winning side did not void';
   end if;
   if public.points_balance(v_group, v_owner) <> 1300 then

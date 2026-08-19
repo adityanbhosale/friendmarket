@@ -14,7 +14,7 @@ function groupMessage(overrides = {}) {
     chatId: "any;+;group-1",
     chatKind: "group",
     participant: "+15550000001",
-    text: "sidebar G1-A-01 ping",
+    text: "@sidebar G1-A-01 ping",
     kind: "text",
     service: "iMessage",
     isFromMe: false,
@@ -32,7 +32,7 @@ test("normalizes the provider message into a transport envelope", () => {
     conversationId: "any;+;group-1",
     isGroup: true,
     senderId: "+15550000001",
-    text: "sidebar G1-A-01 ping",
+    text: "@sidebar G1-A-01 ping",
     receivedAt: "2026-08-18T16:00:00.000Z",
     kind: "text",
     service: "iMessage",
@@ -76,7 +76,8 @@ test("ignores ordinary chatter, DMs, non-text events, and messages from the bot"
 test("limits live evidence collection to explicitly tagged test traffic", () => {
   assert.equal(isTaggedTestTraffic("where are we meeting?"), false);
   assert.equal(isTaggedTestTraffic("ordinary chatter G1-N-01"), true);
-  assert.equal(isTaggedTestTraffic("sidebar G1-A-01 ping"), true);
+  assert.equal(isTaggedTestTraffic("@sidebar G1-A-01 ping"), true);
+  assert.equal(isTaggedTestTraffic("sidebar show markets"), false);
 });
 
 test("deduplicates events and always replies to the received conversation", async () => {

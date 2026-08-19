@@ -16,6 +16,7 @@ const market = {
   resolve_at: "2026-08-18T18:00:01.000Z",
   resolved_at: null,
   void_reason: null,
+  adjudicator_id: USER_ID,
 };
 
 function marketResult() {
@@ -32,6 +33,7 @@ function marketResult() {
     totals: { total_pool: 100, participants: 2, revealed: true },
     myStakes: [{ amount: 40 }],
     payouts: [],
+    adjudicatorName: "Yash",
   };
 }
 
@@ -81,7 +83,7 @@ test("agent binds the iMessage identities before parsing or executing", async ()
     requireMembership: async (...args) => calls.push(["membership", ...args]),
     listMarkets: async (...args) => {
       calls.push(["list", ...args]);
-      return [{ market, totals: marketResult().totals }];
+      return [{ market, totals: marketResult().totals, adjudicatorName: "Yash" }];
     },
   };
   const agent = createSidebarAgent({
@@ -97,7 +99,7 @@ test("agent binds the iMessage identities before parsing or executing", async ()
   const result = await agent({
     conversationId: "chat-1",
     senderId: "+15550000001",
-    text: "Sidebar, show markets",
+    text: "@sidebar, show markets",
   });
 
   assert.deepEqual(calls, [
@@ -115,8 +117,8 @@ test("unbound identities cannot reach the database", async () => {
     },
     resolveBinding: () => ({ status: "unbound_sender", groupId: GROUP_ID }),
   });
-  const result = await agent({ conversationId: "chat", senderId: "sender", text: "Sidebar help" });
-  assert.match(result, /not connected.*Sidebar, start/);
+  const result = await agent({ conversationId: "chat", senderId: "sender", text: "@sidebar help" });
+  assert.match(result, /not connected.*@sidebar, start/);
 });
 
 test("Sidebar start issues a setup link before any market access", async () => {
@@ -135,7 +137,7 @@ test("Sidebar start issues a setup link before any market access", async () => {
   const result = await agent({
     conversationId: "chat-1",
     senderId: "+15550000001",
-    text: "Sidebar, start",
+    text: "@sidebar, start",
   });
 
   assert.deepEqual(setupCalls, [
@@ -167,7 +169,7 @@ test("Sidebar start does not issue another link for an existing binding", async 
       issued = true;
     },
   });
-  const result = await agent({ conversationId: "chat-1", senderId: "sender-1", text: "Sidebar start" });
+  const result = await agent({ conversationId: "chat-1", senderId: "sender-1", text: "@sidebar start" });
   assert.equal(issued, false);
   assert.match(result, /already connected/);
 });
@@ -182,9 +184,25 @@ test("dry-run Sidebar start does not persist a setup token", async () => {
     },
     dryRun: true,
   });
-  const result = await agent({ conversationId: "chat-1", senderId: "sender-1", text: "Sidebar start" });
+  const result = await agent({ conversationId: "chat-1", senderId: "sender-1", text: "@sidebar start" });
   assert.equal(issued, false);
   assert.match(result, /Would create/);
+});
+
+test("unprefixed text is ignored before binding or database access", async () => {
+  let called = false;
+  const agent = createSidebarAgent({
+    client: {},
+    resolveBinding: async () => {
+      called = true;
+      return { status: "bound", groupId: GROUP_ID, userId: USER_ID };
+    },
+  });
+  assert.equal(
+    await agent({ conversationId: "chat", senderId: "sender", text: "Sidebar, show markets" }),
+    null,
+  );
+  assert.equal(called, false);
 });
 
 test("formats final payouts after deterministic resolution", async () => {

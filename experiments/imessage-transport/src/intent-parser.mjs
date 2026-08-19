@@ -1,4 +1,4 @@
-const BOT_PREFIX = /^\s*(?:hey\s+)?@?sidebar\s*[:,\-]?\s*/i;
+const BOT_PREFIX = /^\s*@sidebar\b\s*[:,\-]?\s*/i;
 
 const ACTIONS = new Set([
   "help",
@@ -18,7 +18,7 @@ export function isStartRequest(text) {
   return BOT_PREFIX.test(text) && /^start\s*[.!?]*$/i.test(stripBotPrefix(text).trim());
 }
 
-export function parseDeterministicIntent(text, { now = new Date() } = {}) {
+export function parseDeterministicIntent(text, { now = new Date(), markets = [] } = {}) {
   const request = stripBotPrefix(text).trim();
   if (!request) return unknown("What would you like Sidebar to do?");
 
@@ -34,16 +34,10 @@ export function parseDeterministicIntent(text, { now = new Date() } = {}) {
   if (/\bdelete\b.*\bmarket\b/i.test(request)) {
     return unknown("Deleting a market is not implemented in Sidebar yet.");
   }
-  if (/\b(?:adjudicator|judge)\b/i.test(request)) {
-    return unknown(
-      "Random adjudicators are not implemented yet. The current backend allows only the market proposer to resolve it.",
-    );
-  }
-
-  const bet = parseBet(request);
+  const bet = parseBet(request, markets);
   if (bet) return bet;
 
-  const resolution = parseResolution(request);
+  const resolution = parseResolution(request, markets);
   if (resolution) return resolution;
 
   const create = parseCreateMarket(request, now);
@@ -51,14 +45,20 @@ export function parseDeterministicIntent(text, { now = new Date() } = {}) {
 
   const marketNumber = extractMarketNumber(request);
   if (/\b(?:odds?|pot|status|time|left|remaining|stakes?|payouts?)\b/i.test(request)) {
-    if (marketNumber == null) {
-      return unknown("Which market number should I show?");
-    }
-    return intent("show_market", { marketNumber });
+    if (marketNumber != null) return intent("show_market", { marketNumber });
+    const matched = resolveMarketReference(request, markets);
+    if (matched.intent) return intent("show_market", { marketNumber: matched.intent });
+    return unknown(matched.clarification || "Which market should I show?");
   }
 
   if (/\b(?:show|list|current|open)\b.*\bmarkets?\b|^markets?\??$/i.test(request)) {
     return intent("list_markets");
+  }
+
+  if (/^\s*(?:show|describe)\b/i.test(request)) {
+    const matched = resolveMarketReference(request, markets);
+    if (matched.intent) return intent("show_market", { marketNumber: matched.intent });
+    if (matched.clarification) return unknown(matched.clarification);
   }
 
   return null;
@@ -75,7 +75,7 @@ export async function parseNaturalLanguageIntent({
 }) {
   if (!isAgentInvocation(text)) return null;
 
-  const deterministic = parseDeterministicIntent(text, { now });
+  const deterministic = parseDeterministicIntent(text, { now, markets });
   if (deterministic) return deterministic;
 
   if (!apiKey) {
@@ -162,7 +162,7 @@ function stripBotPrefix(text) {
   return String(text ?? "").replace(BOT_PREFIX, "");
 }
 
-function parseBet(request) {
+function parseBet(request, markets) {
   const patterns = [
     /\b(?:bet|stake|put)\s+(\d+)(?:\s+points?)?\s+(?:on\s+)?(yes|no)\b.*?\b(?:market\s*)?#?(\d+)\b/i,
     /\b(?:market\s*)?#?(\d+)\b.*?\b(?:bet|stake|put)\s+(\d+)(?:\s+points?)?\s+(?:on\s+)?(yes|no)\b/i,
@@ -183,18 +183,119 @@ function parseBet(request) {
       side: second[3].toLowerCase(),
     });
   }
+
+  const implicit = request.match(
+    /\b(?:bet|stake|put)\s+(\d+)(?:\s+points?)?\s+(?:on\s+)?(?:(yes|no)\s+(?:on|for)\s+)?(.+)$/i,
+  );
+  if (implicit) {
+    const matched = resolveMarketReference(implicit[3], markets);
+    if (matched.intent) {
+      return intent("place_bet", {
+        amount: Number(implicit[1]),
+        side: implicit[2]?.toLowerCase() ?? "yes",
+        marketNumber: matched.intent,
+      });
+    }
+    return unknown(matched.clarification || "Which market do you want to bet on?");
+  }
   return null;
 }
 
-function parseResolution(request) {
+function parseResolution(request, markets) {
   if (!/\b(?:resolve|adjudicate|settle)\b/i.test(request)) return null;
-  const marketNumber = extractMarketNumber(request);
+  let marketNumber = extractMarketNumber(request);
   const side = request.match(/\b(yes|no|void|ambiguous)\b/i)?.[1]?.toLowerCase();
-  if (marketNumber == null || !side) return null;
+  if (!side) return unknown("Should I resolve that market as Yes, No, or Void?");
+  if (marketNumber == null) {
+    const matched = resolveMarketReference(request, markets);
+    if (!matched.intent) {
+      return unknown(matched.clarification || "Which market do you want to resolve?");
+    }
+    marketNumber = matched.intent;
+  }
   return intent("resolve_market", {
     marketNumber,
     side: side === "ambiguous" ? "void" : side,
   });
+}
+
+function resolveMarketReference(reference, markets) {
+  if (!Array.isArray(markets) || markets.length === 0) return {};
+  const referenceTokens = meaningfulTokens(reference);
+  if (referenceTokens.size === 0) return {};
+
+  const ranked = markets
+    .map((market) => {
+      const questionTokens = meaningfulTokens(market.question);
+      const overlap = [...questionTokens].filter((token) => referenceTokens.has(token)).length;
+      const coverage = questionTokens.size ? overlap / questionTokens.size : 0;
+      const precision = referenceTokens.size ? overlap / referenceTokens.size : 0;
+      return {
+        market,
+        overlap,
+        score: coverage * 0.75 + precision * 0.25,
+      };
+    })
+    .filter(({ overlap, score }) => overlap >= 2 && score >= 0.5)
+    .sort((a, b) => b.score - a.score || b.overlap - a.overlap);
+
+  if (ranked.length === 0) return {};
+  const [best, second] = ranked;
+  if (second && best.score - second.score < 0.15) {
+    return {
+      clarification: `I found more than one possible market: ${ranked
+        .slice(0, 3)
+        .map(({ market }) => `#${market.display_num} “${market.question}”`)
+        .join("; ")}. Which one?`,
+    };
+  }
+  return { intent: Number(best.market.display_num) };
+}
+
+const MATCH_STOPWORDS = new Set([
+  "a",
+  "an",
+  "as",
+  "at",
+  "bet",
+  "for",
+  "is",
+  "market",
+  "on",
+  "points",
+  "put",
+  "resolve",
+  "settle",
+  "show",
+  "stake",
+  "that",
+  "the",
+  "to",
+  "will",
+  "yes",
+  "no",
+  "void",
+]);
+
+function meaningfulTokens(value) {
+  return new Set(
+    String(value ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .map(stemToken)
+      .filter((token) => token.length >= 2 && !MATCH_STOPWORDS.has(token)),
+  );
+}
+
+function stemToken(token) {
+  if (token.length > 5 && token.endsWith("ing")) {
+    const stem = token.slice(0, -3);
+    return /(.)\1$/.test(stem) ? stem.slice(0, -1) : stem;
+  }
+  if (token.length > 4 && token.endsWith("ed")) return token.slice(0, -2);
+  if (token.length > 4 && token.endsWith("s")) return token.slice(0, -1);
+  return token;
 }
 
 function parseCreateMarket(request, now) {

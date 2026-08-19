@@ -118,13 +118,23 @@ export function createSidebarClient({
     });
     if (markets.length === 0) return [];
 
-    const totals = await select("market_totals", {
-      market_id: `in.(${markets.map((market) => market.id).join(",")})`,
-    });
+    const adjudicatorIds = [
+      ...new Set(markets.map((market) => market.adjudicator_id).filter(Boolean)),
+    ];
+    const [totals, adjudicators] = await Promise.all([
+      select("market_totals", {
+        market_id: `in.(${markets.map((market) => market.id).join(",")})`,
+      }),
+      adjudicatorIds.length
+        ? select("users", { id: `in.(${adjudicatorIds.join(",")})` })
+        : [],
+    ]);
     const totalsByMarket = new Map(totals.map((total) => [total.market_id, total]));
+    const adjudicatorById = new Map(adjudicators.map((user) => [user.id, user.name]));
     return markets.map((market) => ({
       market,
       totals: totalsByMarket.get(market.id) ?? null,
+      adjudicatorName: adjudicatorById.get(market.adjudicator_id) ?? "Unknown member",
     }));
   }
 
@@ -135,14 +145,25 @@ export function createSidebarClient({
     });
     if (!market) return null;
 
-    const [sides, pools, totals, myStakes, payouts] = await Promise.all([
+    const [sides, pools, totals, myStakes, payouts, adjudicator] = await Promise.all([
       select("market_sides", { market_id: `eq.${market.id}`, order: "ordinal.asc" }),
       select("market_pools_sealed", { market_id: `eq.${market.id}` }),
       selectOne("market_totals", { market_id: `eq.${market.id}` }),
       select("stakes", { market_id: `eq.${market.id}`, user_id: `eq.${userId}` }),
       getPayouts(market.id),
+      market.adjudicator_id
+        ? selectOne("users", { id: `eq.${market.adjudicator_id}` })
+        : null,
     ]);
-    return { market, sides, pools, totals, myStakes, payouts };
+    return {
+      market,
+      sides,
+      pools,
+      totals,
+      myStakes,
+      payouts,
+      adjudicatorName: adjudicator?.name ?? "Unknown member",
+    };
   }
 
   async function openMarket({ groupId, userId, question, criteria, revealAt, closeAt, resolveAt }) {
@@ -180,6 +201,9 @@ export function createSidebarClient({
     await requireMembership(groupId, userId);
     const market = await getMarketByNumber(groupId, marketNumber, userId);
     if (!market) throw new Error(`Market #${marketNumber} does not exist in this group.`);
+    if (market.market.adjudicator_id !== userId) {
+      throw new Error("Permission denied: only this market's adjudicator can resolve it.");
+    }
     const outcomeSide =
       side === "void"
         ? null

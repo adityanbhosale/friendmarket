@@ -8,9 +8,11 @@ import {
 } from "../src/intent-parser.mjs";
 
 test("invokes only messages that begin by naming Sidebar", () => {
-  assert.equal(isAgentInvocation("sidebar what are the odds on market 2?"), true);
+  assert.equal(isAgentInvocation("sidebar what are the odds on market 2?"), false);
   assert.equal(isAgentInvocation("@Sidebar, put 40 on yes in market 3"), true);
-  assert.equal(isAgentInvocation("hey sidebar: show markets"), true);
+  assert.equal(isAgentInvocation("hey sidebar: show markets"), false);
+  assert.equal(isAgentInvocation("Sidebar, show markets"), false);
+  assert.equal(isAgentInvocation("please @sidebar show markets"), false);
   assert.equal(isAgentInvocation("put 40 on yes in market 3"), false);
   assert.equal(isAgentInvocation("what are the odds on market 2?"), false);
   assert.equal(isAgentInvocation("I mentioned Sidebar in conversation"), false);
@@ -20,7 +22,7 @@ test("invokes only messages that begin by naming Sidebar", () => {
 
 test("parses natural bet and market query phrases without an LLM", () => {
   assert.deepEqual(
-    parseDeterministicIntent("Sidebar, put 40 points on yes in market 3"),
+    parseDeterministicIntent("@sidebar, put 40 points on yes in market 3"),
     {
       action: "place_bet",
       marketNumber: 3,
@@ -40,6 +42,41 @@ test("parses natural bet and market query phrases without an LLM", () => {
     parseDeterministicIntent("what are the odds on market #7?").action,
     "show_market",
   );
+});
+
+test("matches a natural bet description against only the supplied markets", () => {
+  const markets = [
+    { display_num: 1, question: "Will Adi black out tonight?" },
+    { display_num: 2, question: "Will Brent arrive before midnight?" },
+  ];
+  const parsed = parseDeterministicIntent(
+    "@sidebar, put 100 points on adi blacking out tonight",
+    { markets },
+  );
+  assert.equal(parsed.action, "place_bet");
+  assert.equal(parsed.marketNumber, 1);
+  assert.equal(parsed.side, "yes");
+  assert.equal(parsed.amount, 100);
+});
+
+test("matches a resolution description and rejects ambiguous market references", () => {
+  const markets = [
+    { display_num: 1, question: "Will Adi black out tonight?" },
+    { display_num: 2, question: "Will Adi black out tomorrow?" },
+  ];
+  const resolved = parseDeterministicIntent(
+    "@sidebar, resolve adi blacking out tonight as yes",
+    { markets },
+  );
+  assert.equal(resolved.action, "resolve_market");
+  assert.equal(resolved.marketNumber, 1);
+  assert.equal(resolved.side, "yes");
+
+  const ambiguous = parseDeterministicIntent("@sidebar, put 20 on adi blacking out", {
+    markets,
+  });
+  assert.equal(ambiguous.action, "unknown");
+  assert.match(ambiguous.clarification, /more than one possible market/i);
 });
 
 test("parses a final-payout request as a market detail read", () => {
@@ -102,7 +139,7 @@ test("does not call OpenAI for an unprefixed market instruction", async () => {
 test("uses strict structured output for ambiguous invoked language", async () => {
   let requestBody;
   const result = await parseNaturalLanguageIntent({
-    text: "sidebar I want fifty points on the affirmative side of number four",
+    text: "@sidebar I want fifty points on the affirmative side of number four",
     apiKey: "test-key",
     fetchImpl: async (_url, init) => {
       requestBody = JSON.parse(init.body);
@@ -146,7 +183,7 @@ test("uses strict structured output for ambiguous invoked language", async () =>
 
 test("returns a clarification when OpenAI fallback is not configured", async () => {
   const result = await parseNaturalLanguageIntent({
-    text: "sidebar do the thing with market four",
+    text: "@sidebar do the thing with market four",
     apiKey: "",
   });
   assert.equal(result.action, "unknown");
