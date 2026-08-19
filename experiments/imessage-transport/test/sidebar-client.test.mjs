@@ -50,7 +50,9 @@ test("stores only setup token and provider hashes", async () => {
     key: "test-key",
     fetchImpl: async (url, init) => {
       requests.push({ url, init });
-      return new Response(null, { status: 204 });
+      // PostgREST commonly returns 201 with an empty body for
+      // Prefer: return=minimal. That is a successful insert, not a JSON error.
+      return new Response(null, { status: 201 });
     },
   });
   await client.createImessageSetup({

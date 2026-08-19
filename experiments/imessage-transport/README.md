@@ -77,6 +77,34 @@ npm run watch
 
 The expected replies are `ACK G1-A-01` and `ACK G1-B-01`. Stop with Control-C.
 
+### Test with one iMessage account
+
+Messages sent from an iPhone using the same iMessage account as this Mac arrive
+as `isFromMe` and are ignored by default. A deliberately narrow self-test mode
+can exercise one known group without changing that production behavior.
+
+Put only the redacted hash printed by `npm run smoke` in the root `.env.local`:
+
+```dotenv
+SIDEBAR_IMESSAGE_CONVERSATION_HASH=12-character-hash-for-the-test-group
+```
+
+Then start with no writes:
+
+```zsh
+npm run watch:self:dry
+```
+
+Send `Sidebar G1-SELF-01 ping` from the same iMessage account. Once it is
+recorded as `would_reply`, run `npm run watch:self` and send
+`Sidebar G1-SELF-02 ping`; the exact group should receive `ACK G1-SELF-02`.
+Only messages beginning with `Sidebar` in that exact conversation are adapted;
+all other from-me traffic remains ignored. Replies do not begin with `Sidebar`,
+and generated `ACK` messages are rejected explicitly, so they cannot recursively
+invoke the watcher. A separate circuit breaker also blocks identical replies
+within ten seconds and caps total replies per minute. Never enable this mode on
+a hosted or multi-user transport.
+
 ## Test sequence
 
 1. Send one tagged message from two different participants in G1.
@@ -159,6 +187,24 @@ native iMessage participant still does not alter Sidebar membership.
 The older `SIDEBAR_IMESSAGE_CONVERSATION_HASH`, `SIDEBAR_GROUP_ID`, and
 `SIDEBAR_IMESSAGE_USER_MAP` values remain available only as a temporary local
 fallback for an already configured test chat.
+
+For a database-backed test using the same iMessage account as the Mac, add the
+existing Sidebar member to impersonate only in the scoped local test:
+
+```dotenv
+SIDEBAR_ALLOW_SELF_TEST=1
+SIDEBAR_SELF_TEST_USER_ID=the-existing-sidebar-user-uuid
+```
+
+Verify Messages access, exact-group selection, Supabase credentials, and group
+membership without writing anything:
+
+```zsh
+npm run preflight:self
+```
+
+Use `npm run agent:self:dry` first and `npm run agent:self` only after its
+responses identify the intended group and user.
 
 ### 2. Natural-language interpretation
 

@@ -7,6 +7,10 @@ export function isTaggedTestTraffic(text) {
   return EXPLICIT_TRIGGER.test(text) || CORRELATION_TAG.test(text);
 }
 
+export function isExplicitSidebarTraffic(text) {
+  return EXPLICIT_TRIGGER.test(text);
+}
+
 export function normalizePhotonMessage(message) {
   return {
     provider: "photon-local",
@@ -34,6 +38,9 @@ export function classifyInbound(envelope) {
     return { action: "ignore", reason: "missing_conversation_id" };
   }
   if (!envelope.senderId) return { action: "ignore", reason: "missing_sender" };
+  if (/^\s*ACK\b/i.test(envelope.text)) {
+    return { action: "ignore", reason: "generated_reply" };
+  }
 
   const correlationTag = envelope.text.match(CORRELATION_TAG)?.[0]?.toUpperCase();
   if (correlationTag?.includes("-N-")) {
@@ -50,7 +57,11 @@ export function classifyInbound(envelope) {
   };
 }
 
-export function createMessageProcessor({ sendReply, recordEvidence }) {
+export function createMessageProcessor({
+  sendReply,
+  recordEvidence,
+  maxSeenEvents = 10_000,
+}) {
   const seenEventIds = new Set();
 
   return async function processMessage(envelope) {
@@ -59,6 +70,9 @@ export function createMessageProcessor({ sendReply, recordEvidence }) {
       return { action: "ignore", reason: "duplicate_event" };
     }
     seenEventIds.add(envelope.eventId);
+    if (seenEventIds.size > maxSeenEvents) {
+      seenEventIds.delete(seenEventIds.values().next().value);
+    }
 
     const decision = classifyInbound(envelope);
     if (decision.action === "ignore") {
@@ -68,6 +82,11 @@ export function createMessageProcessor({ sendReply, recordEvidence }) {
 
     try {
       const sent = await sendReply(envelope.conversationId, decision.replyText);
+      if (sent === "blocked") {
+        const blocked = { action: "ignore", reason: "reply_circuit_open" };
+        await recordEvidence(evidenceFor(envelope, "blocked", blocked.reason));
+        return blocked;
+      }
       await recordEvidence(
         evidenceFor(
           envelope,
@@ -78,6 +97,9 @@ export function createMessageProcessor({ sendReply, recordEvidence }) {
       );
       return decision;
     } catch (error) {
+      // A transport failure is not a completed event. Let a later delivery or
+      // manual replay attempt the reply again instead of silently discarding it.
+      seenEventIds.delete(envelope.eventId);
       await recordEvidence(
         evidenceFor(envelope, "failed", errorMessage(error), decision.correlationTag),
       );

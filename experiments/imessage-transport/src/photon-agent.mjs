@@ -4,10 +4,20 @@ import {
   generateImessageSetupToken,
 } from "./imessage-identity.mjs";
 import { isAgentInvocation } from "./intent-parser.mjs";
-import { settleMessageRouting } from "./photon-routing.mjs";
+import {
+  settleMessageConversation,
+  settleMessageRouting,
+} from "./photon-routing.mjs";
 import { createSidebarAgent } from "./sidebar-agent.mjs";
 import { createBindingResolver, loadSidebarBindings } from "./sidebar-bindings.mjs";
 import { createSidebarClient } from "./sidebar-client.mjs";
+import {
+  loadSelfTestConfig,
+  normalizeSelfTestMessage,
+  resolveSelfTestBinding,
+} from "./self-test-routing.mjs";
+import { startSelfMessagePolling } from "./self-test-poller.mjs";
+import { createReplyCircuitBreaker } from "./reply-circuit-breaker.mjs";
 import { fingerprint, normalizePhotonMessage } from "./transport-core.mjs";
 
 const dryRun = process.env.SIDEBAR_AGENT_DRY_RUN === "1";
@@ -15,6 +25,7 @@ const seen = new Set();
 let sdk;
 
 try {
+  const selfTest = loadSelfTestConfig(process.env, { requireBinding: true });
   const bindings = loadSidebarBindings();
   const client = createSidebarClient();
   const staticBindingResolver = createBindingResolver(bindings);
@@ -25,6 +36,8 @@ try {
   const appUrl = process.env.SIDEBAR_APP_URL?.replace(/\/$/, "");
 
   const resolveBinding = async (conversationHash, senderHash, raw) => {
+    const selfBinding = resolveSelfTestBinding(selfTest, raw.senderId);
+    if (selfBinding) return selfBinding;
     if (hashIdentity) {
       const persistent = await client.resolveImessageBinding(
         hashIdentity("conversation", raw.conversationId),
@@ -63,31 +76,40 @@ try {
     issueSetupLink,
     dryRun,
   });
+  const replyCircuitBreaker = createReplyCircuitBreaker();
   sdk = new IMessageSDK({ maxConcurrentSends: 1 });
+
+  const handleSelfMessage = async (message) => {
+    const settled = await settleMessageConversation(sdk, message);
+    const envelope = normalizeSelfTestMessage(settled, selfTest);
+    if (envelope) await handleEnvelope(envelope, agent, replyCircuitBreaker);
+  };
 
   await sdk.startWatching({
     onGroupMessage: async (message) => {
       if (!isAgentInvocation(message.text ?? "")) return;
       const settled = await settleMessageRouting(sdk, message);
       const envelope = normalizePhotonMessage(settled);
-      if (!isEligible(envelope) || seen.has(envelope.eventId)) return;
-      seen.add(envelope.eventId);
-
-      const reply = await agent(envelope);
-      if (!reply) return;
-      if (!dryRun) await sdk.send({ to: envelope.conversationId, text: reply });
-      writeStatus({
-        status: dryRun ? "would_reply" : "replied",
-        eventHash: fingerprint(envelope.eventId),
-        conversationHash: fingerprint(envelope.conversationId),
-        senderHash: fingerprint(envelope.senderId),
-      });
+      await handleEnvelope(envelope, agent, replyCircuitBreaker);
+    },
+    onFromMeMessage: async (message) => {
+      if (!isAgentInvocation(message.text ?? "")) return;
+      if (selfTest) await handleSelfMessage(message);
     },
     onError: (error) => writeStatus({ status: "watch_error", message: error.message }),
   });
 
+  const stopSelfPolling = selfTest
+    ? startSelfMessagePolling({
+        sdk,
+        accept: (message) => isAgentInvocation(message.text ?? ""),
+        onMessage: handleSelfMessage,
+        onError: (error) => writeStatus({ status: "self_poll_error", message: error.message }),
+      })
+    : async () => undefined;
+
   writeStatus({ status: "watching", dryRun, trigger: "explicit Sidebar request" });
-  await waitForShutdown();
+  await waitForShutdown(stopSelfPolling);
 } catch (error) {
   writeStatus({
     status: "failed",
@@ -108,15 +130,47 @@ function isEligible(envelope) {
   );
 }
 
+async function handleEnvelope(envelope, agent, replyCircuitBreaker) {
+  if (!isEligible(envelope) || seen.has(envelope.eventId)) return;
+  seen.add(envelope.eventId);
+  if (seen.size > 10_000) seen.delete(seen.values().next().value);
+
+  try {
+    const reply = await agent(envelope);
+    if (!reply) return;
+    if (!dryRun) {
+      if (!replyCircuitBreaker.allow(reply)) {
+        writeStatus({
+          status: "reply_circuit_open",
+          eventHash: fingerprint(envelope.eventId),
+          conversationHash: fingerprint(envelope.conversationId),
+        });
+        return;
+      }
+      await sdk.send({ to: envelope.conversationId, text: reply });
+    }
+    writeStatus({
+      status: dryRun ? "would_reply" : "replied",
+      eventHash: fingerprint(envelope.eventId),
+      conversationHash: fingerprint(envelope.conversationId),
+      senderHash: fingerprint(envelope.senderId),
+    });
+  } catch (error) {
+    seen.delete(envelope.eventId);
+    throw error;
+  }
+}
+
 function writeStatus(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
-function waitForShutdown() {
+function waitForShutdown(stopSelfPolling) {
   return new Promise((resolve) => {
     const stop = async () => {
       process.off("SIGINT", stop);
       process.off("SIGTERM", stop);
+      await stopSelfPolling();
       await sdk.close();
       resolve();
     };
