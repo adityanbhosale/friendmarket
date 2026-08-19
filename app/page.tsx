@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useActionState, useLayoutEffect, useRef } from "react";
 import { Masthead, Nav, Shell } from "./shell";
+import { goToGroupJoin, type FormState } from "./lib/actions";
 
 // Hardcoded demo market. No market logic anywhere — these numbers are props.
 // Fractional odds are the conventional approximations of the implied
@@ -151,20 +151,13 @@ function Hero() {
  * on a public page.
  */
 function InviteCode() {
-  const router = useRouter();
-  const [code, setCode] = useState("");
-
-  // Codes get read aloud and retyped, so forgive case, spaces, and the dash.
-  const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!clean) return;
-    router.push(`/join/${clean}`);
-  }
+  const [state, action, pending] = useActionState<FormState, FormData>(
+    goToGroupJoin,
+    {},
+  );
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form action={action}>
       <label htmlFor="invite" className="block text-base">
         Got a code from a friend?
       </label>
@@ -172,28 +165,26 @@ function InviteCode() {
       <div className="mt-3 flex gap-2">
         <input
           id="invite"
-          name="invite"
+          name="group_code"
           type="text"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
           placeholder="K7QM-3XPD"
           autoComplete="off"
           autoCapitalize="characters"
           spellCheck={false}
-          maxLength={9}
+          maxLength={40}
           className="h-12 w-[11ch] border border-rule bg-background px-3 font-mono text-base tracking-wider uppercase placeholder:tracking-wider placeholder:text-muted focus:border-foreground focus:outline-none"
         />
         <button
           type="submit"
-          disabled={!clean}
+          disabled={pending}
           className="h-12 border border-foreground px-6 text-base transition-opacity hover:opacity-60 disabled:opacity-30"
         >
-          Join
+          {pending ? "…" : "Join"}
         </button>
       </div>
 
       <p className="mt-3 text-sm text-muted">
-        No code? Ask whoever started the group.
+        {state.error ?? "No code? Ask whoever started the group."}
       </p>
     </form>
   );

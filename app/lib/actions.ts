@@ -32,6 +32,7 @@ import {
   normalizeImessageSetupToken,
 } from "./imessage-token";
 import { derivePhoneIdentity } from "./phone-identity";
+import { GROUP_CODE_ALPHABET, normalizeGroupCode } from "./group-code";
 
 // A shared group password travels through a group chat and is guessable by
 // anyone holding the link. Throttling is what stands between that and an
@@ -55,17 +56,35 @@ export type FormState = {
 
 // No I, L, O, 0 or 1: these get read aloud and typed in by hand from a group
 // chat, and those four are where transcription goes wrong.
-const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-
 function generateGroupId(): string {
   const block = () =>
-    Array.from({ length: 4 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
+    Array.from(
+      { length: 4 },
+      () => GROUP_CODE_ALPHABET[randomInt(GROUP_CODE_ALPHABET.length)],
+    ).join("");
   return `${block()}-${block()}`;
 }
 
 function normalizeGroupId(value: FormDataEntryValue | null): string {
-  const raw = String(value ?? "").trim().toUpperCase();
-  return /^[A-Z0-9]{8}$/.test(raw) ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw;
+  return normalizeGroupCode(value) ?? "";
+}
+
+export async function goToGroupJoin(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const raw = String(formData.get("group_code") ?? "").trim();
+  if (normalizeRecoveryCode(raw)) {
+    return {
+      error: "That is a recovery code, not a group code. Use Recover access instead.",
+    };
+  }
+  const linkId = normalizeGroupCode(raw);
+  if (!linkId) return { error: "Enter a Sidebar group code in the format XXXX-XXXX." };
+
+  const group = await selectOne<{ id: string }>("groups", { link_id: `eq.${linkId}` });
+  if (!group) return { error: "No Sidebar group uses that code." };
+  redirect(`/join/${linkId}`);
 }
 
 /**
