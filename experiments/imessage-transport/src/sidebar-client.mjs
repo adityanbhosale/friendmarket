@@ -51,8 +51,9 @@ export function createSidebarClient({
         body,
       );
     }
-    if (response.status === 204) return undefined;
-    return response.json();
+    const body = await response.text();
+    if (!body) return undefined;
+    return JSON.parse(body);
   }
 
   const select = (table, query = {}) =>

@@ -62,6 +62,7 @@ test("ignores ordinary chatter, DMs, non-text events, and messages from the bot"
     [groupMessage({ chatKind: "dm" }), "not_group"],
     [groupMessage({ kind: "memberAdded" }), "not_text"],
     [groupMessage({ isFromMe: true }), "from_me"],
+    [groupMessage({ text: "ACK G1-A-01" }), "generated_reply"],
   ];
 
   for (const [message, reason] of cases) {
@@ -106,6 +107,51 @@ test("labels dry-run command evidence without claiming a message was sent", asyn
   await processMessage(normalizePhotonMessage(groupMessage()));
 
   assert.equal(evidence[0].result, "would_reply");
+});
+
+test("allows a failed reply to be retried", async () => {
+  let attempts = 0;
+  const processMessage = createMessageProcessor({
+    sendReply: async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("Messages unavailable");
+      return true;
+    },
+    recordEvidence: async () => undefined,
+  });
+  const envelope = normalizePhotonMessage(groupMessage());
+
+  await assert.rejects(processMessage(envelope), /Messages unavailable/);
+  await processMessage(envelope);
+  assert.equal(attempts, 2);
+});
+
+test("never treats its generated ACK as another command", async () => {
+  const replies = [];
+  const processMessage = createMessageProcessor({
+    sendReply: async (_conversationId, text) => replies.push(text),
+    recordEvidence: async () => undefined,
+  });
+
+  await processMessage(normalizePhotonMessage(groupMessage()));
+  await processMessage(
+    normalizePhotonMessage(
+      groupMessage({ id: "message-2", text: replies[0], isFromMe: false }),
+    ),
+  );
+  assert.deepEqual(replies, ["ACK G1-A-01"]);
+});
+
+test("records a circuit-breaker block without sending", async () => {
+  const evidence = [];
+  const processMessage = createMessageProcessor({
+    sendReply: async () => "blocked",
+    recordEvidence: async (entry) => evidence.push(entry),
+  });
+
+  const result = await processMessage(normalizePhotonMessage(groupMessage()));
+  assert.deepEqual(result, { action: "ignore", reason: "reply_circuit_open" });
+  assert.equal(evidence[0].result, "blocked");
 });
 
 test("redacted fingerprints are stable and do not expose identifiers", () => {
