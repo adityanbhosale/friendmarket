@@ -57,6 +57,22 @@ export function JoinForm({
           />
         </Field>
 
+        <Field label="Your phone number" htmlFor="phone">
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            required
+            autoComplete="tel"
+            placeholder="(212) 555-0199"
+            className={INPUT}
+          />
+          <p className="mt-2 text-xs text-muted">
+            New members get a stable member code. Returning members use the
+            same number to reopen their existing UUID, points, and markets.
+          </p>
+        </Field>
+
         <Field label="Your name" htmlFor="name" last>
           <input
             id="name"
@@ -84,7 +100,7 @@ export function JoinForm({
         {state.error ?? ""}
       </p>
       <p className="mt-5 text-sm text-muted">
-        Returning on a new device?{" "}
+        No longer have access to that phone number?{" "}
         <Link href="/recover" className="underline underline-offset-4 hover:text-foreground">
           Use your recovery code
         </Link>

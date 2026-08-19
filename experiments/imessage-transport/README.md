@@ -140,13 +140,15 @@ The local agent currently supports the functionality already present in the
 Sidebar backend:
 
 - create and list markets;
+- join and leave markets;
 - show status, odds, stakes, total pot, and time remaining;
 - place a Yes or No bet;
 - resolve a market as Yes, No, or Void; and
 - show the resulting payouts.
 
-Market-specific membership and market deletion are not in the current database
-model. Native iMessage group membership is never changed. Each new market gets
+Market deletion is not in the current database model. Native iMessage group
+membership is never changed. Market participation is explicit and separate
+from the native chat: everyone can view, but only joined members can bet. Each new market gets
 a randomly selected current group member as adjudicator, preferring someone
 other than the proposer when possible.
 
@@ -178,7 +180,7 @@ shared group. The page then:
 - lets a new user create a Sidebar group if the conversation has none; or
 - accepts an existing group ID and password when the browser is not signed in;
 - lets another participant privately enter the existing group password and
-  create their own member identity.
+create their own phone-derived member identity.
 
 The setup token is stored only as a SHA-256 hash and is consumed atomically with
 the group membership and iMessage binding. A Sidebar group needs no iMessage
@@ -214,10 +216,16 @@ Common phrasing is parsed locally and costs nothing:
 ```text
 @sidebar, show markets
 @sidebar, what are the odds on market 3?
+@sidebar, join Dan being late
 @sidebar, put 40 points on Dan being late
 @sidebar, create a market: Will Dan be late? closes in 2 hours
 @sidebar, resolve Dan being late as yes
 ```
+
+Person markets are opened on the web, where the creator supplies the subject's
+name and phone number privately. The database stores only a keyed phone hash
+and prevents the matching subject from joining or betting while leaving the
+market visible to them.
 
 Every request must begin with `@sidebar`. Even an
 otherwise clear market instruction is ignored without that prefix, so ordinary

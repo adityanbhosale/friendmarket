@@ -111,7 +111,7 @@ export function createSidebarClient({
     });
   }
 
-  async function listMarkets(groupId) {
+  async function listMarkets(groupId, userId) {
     const markets = await select("markets", {
       group_id: `eq.${groupId}`,
       order: "display_num.desc",
@@ -121,20 +121,28 @@ export function createSidebarClient({
     const adjudicatorIds = [
       ...new Set(markets.map((market) => market.adjudicator_id).filter(Boolean)),
     ];
-    const [totals, adjudicators] = await Promise.all([
+    const [totals, adjudicators, participation] = await Promise.all([
       select("market_totals", {
         market_id: `in.(${markets.map((market) => market.id).join(",")})`,
       }),
       adjudicatorIds.length
         ? select("users", { id: `in.(${adjudicatorIds.join(",")})` })
         : [],
+      userId
+        ? select("market_participants", {
+            market_id: `in.(${markets.map((market) => market.id).join(",")})`,
+            user_id: `eq.${userId}`,
+          })
+        : [],
     ]);
     const totalsByMarket = new Map(totals.map((total) => [total.market_id, total]));
     const adjudicatorById = new Map(adjudicators.map((user) => [user.id, user.name]));
+    const joinedIds = new Set(participation.map((row) => row.market_id));
     return markets.map((market) => ({
       market,
       totals: totalsByMarket.get(market.id) ?? null,
       adjudicatorName: adjudicatorById.get(market.adjudicator_id) ?? "Unknown member",
+      joined: joinedIds.has(market.id),
     }));
   }
 
@@ -168,7 +176,7 @@ export function createSidebarClient({
 
   async function openMarket({ groupId, userId, question, criteria, revealAt, closeAt, resolveAt }) {
     await requireMembership(groupId, userId);
-    const marketId = await rpc("open_market", {
+    const marketId = await rpc("open_market_with_subject", {
       p_group_id: groupId,
       p_proposer_id: userId,
       p_question: question,
@@ -176,6 +184,8 @@ export function createSidebarClient({
       p_reveal_at: revealAt,
       p_close_at: closeAt,
       p_resolve_at: resolveAt,
+      p_subject_name: null,
+      p_subject_phone_hash: null,
     });
     return selectOne("markets", { id: `eq.${marketId}`, group_id: `eq.${groupId}` });
   }
@@ -188,13 +198,33 @@ export function createSidebarClient({
       (candidate) => candidate.label.toLowerCase() === side.toLowerCase(),
     );
     if (!selectedSide) throw new Error(`Market #${marketNumber} has no ${side} side.`);
-    await rpc("place_stake", {
+    await rpc("place_stake_joined", {
       p_market_id: market.market.id,
       p_side_id: selectedSide.id,
       p_user_id: userId,
       p_amount: amount,
     });
     return getMarketByNumber(groupId, marketNumber, userId);
+  }
+
+  async function joinMarket({ groupId, userId, marketNumber }) {
+    await requireMembership(groupId, userId);
+    const market = await selectOne("markets", {
+      group_id: `eq.${groupId}`,
+      display_num: `eq.${marketNumber}`,
+    });
+    if (!market) throw new Error(`Market #${marketNumber} does not exist in this group.`);
+    await rpc("join_market", { p_market_id: market.id, p_user_id: userId });
+  }
+
+  async function leaveMarket({ groupId, userId, marketNumber }) {
+    await requireMembership(groupId, userId);
+    const market = await selectOne("markets", {
+      group_id: `eq.${groupId}`,
+      display_num: `eq.${marketNumber}`,
+    });
+    if (!market) throw new Error(`Market #${marketNumber} does not exist in this group.`);
+    await rpc("leave_market", { p_market_id: market.id, p_user_id: userId });
   }
 
   async function resolveMarket({ groupId, userId, marketNumber, side }) {
@@ -249,6 +279,8 @@ export function createSidebarClient({
   return {
     createImessageSetup,
     getMarketByNumber,
+    joinMarket,
+    leaveMarket,
     listMarkets,
     openMarket,
     placeBet,

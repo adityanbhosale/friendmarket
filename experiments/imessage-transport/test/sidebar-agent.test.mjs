@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createSidebarAgent, executeIntent } from "../src/sidebar-agent.mjs";
+import { SidebarDbError } from "../src/sidebar-client.mjs";
 
 const NOW = new Date("2026-08-18T16:00:00.000Z");
 const GROUP_ID = "11111111-1111-4111-8111-111111111111";
@@ -83,7 +84,7 @@ test("agent binds the iMessage identities before parsing or executing", async ()
     requireMembership: async (...args) => calls.push(["membership", ...args]),
     listMarkets: async (...args) => {
       calls.push(["list", ...args]);
-      return [{ market, totals: marketResult().totals, adjudicatorName: "Yash" }];
+      return [{ market, totals: marketResult().totals, adjudicatorName: "Yash", joined: true }];
     },
   };
   const agent = createSidebarAgent({
@@ -104,7 +105,7 @@ test("agent binds the iMessage identities before parsing or executing", async ()
 
   assert.deepEqual(calls, [
     ["membership", GROUP_ID, USER_ID],
-    ["list", GROUP_ID],
+    ["list", GROUP_ID, USER_ID],
   ]);
   assert.match(result, /#3 Will Dan be late\?/);
 });
@@ -220,4 +221,43 @@ test("formats final payouts after deterministic resolution", async () => {
     dryRun: false,
   });
   assert.equal(result, "Resolved market #3: Yes.\nFinal payouts: Adam 160 · Brent 40");
+});
+
+test("joins a group-scoped market before betting", async () => {
+  const calls = [];
+  const result = await executeIntent({
+    client: { joinMarket: async (input) => calls.push(input) },
+    intent: { action: "join_market", marketNumber: 3 },
+    binding: { groupId: GROUP_ID, userId: USER_ID },
+    now: NOW,
+    dryRun: false,
+  });
+  assert.deepEqual(calls, [{ groupId: GROUP_ID, userId: USER_ID, marketNumber: 3 }]);
+  assert.equal(result, "Joined market #3. You can now place a bet.");
+});
+
+test("turns an asynchronous database rejection into one user-facing reply", async () => {
+  const agent = createSidebarAgent({
+    client: {
+      requireMembership: async () => undefined,
+      listMarkets: async () => [{ market, totals: marketResult().totals }],
+      resolveMarket: async () => {
+        throw new SidebarDbError(
+          "Sidebar database request failed (400)",
+          400,
+          JSON.stringify({ message: "market has not closed yet" }),
+        );
+      },
+    },
+    resolveBinding: async () => ({ status: "bound", groupId: GROUP_ID, userId: USER_ID }),
+    parseIntent: async () => ({ action: "resolve_market", marketNumber: 3, side: "void" }),
+    now: () => NOW,
+  });
+
+  const reply = await agent({
+    conversationId: "chat-1",
+    senderId: "sender-1",
+    text: "@sidebar, resolve Dan being late as void",
+  });
+  assert.equal(reply, "I couldn't complete that: market has not closed yet");
 });

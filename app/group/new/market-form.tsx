@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { openMarket, type FormState } from "../../lib/actions";
 
 const INPUT =
@@ -26,6 +26,7 @@ export function MarketForm() {
   const reveal = useRef<HTMLInputElement>(null);
   const close = useRef<HTMLInputElement>(null);
   const resolve = useRef<HTMLInputElement>(null);
+  const [hasSubject, setHasSubject] = useState(false);
 
   // Filled after mount rather than during render: the server has no idea what
   // zone the browser is in, and guessing would cause a hydration mismatch.
@@ -75,6 +76,43 @@ export function MarketForm() {
           </p>
         </Field>
 
+        <Field label="Person market" htmlFor="has_subject">
+          <label className="flex items-baseline gap-3">
+            <input
+              id="has_subject"
+              name="has_subject"
+              type="checkbox"
+              checked={hasSubject}
+              onChange={(event) => setHasSubject(event.target.checked)}
+              className="accent-foreground"
+            />
+            <span>This market is about a specific person</span>
+          </label>
+          <p className="mt-2 text-xs text-muted">
+            Sidebar uses their private phone identity to prevent them from betting.
+          </p>
+          {hasSubject && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <input
+                name="subject_name"
+                type="text"
+                required
+                maxLength={40}
+                placeholder="Their name"
+                className={INPUT}
+              />
+              <input
+                name="subject_phone"
+                type="tel"
+                required
+                autoComplete="off"
+                placeholder="Their phone number"
+                className={INPUT}
+              />
+            </div>
+          )}
+        </Field>
+
         <Field label="Seeding ends" htmlFor="reveal_at">
           <input
             id="reveal_at"
@@ -110,7 +148,7 @@ export function MarketForm() {
             className={INPUT}
           />
           <p className="mt-2 text-xs text-muted">
-            You opened it, so you can settle it from this time onward.
+            The assigned adjudicator can settle it from this time onward.
           </p>
         </Field>
       </div>

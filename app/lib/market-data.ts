@@ -19,6 +19,8 @@ export type Market = {
   criteria: string;
   proposer_id: string;
   adjudicator_id: string;
+  subject_name: string | null;
+  subject_phone_hash: string | null;
   reveal_at: string;
   close_at: string;
   resolve_at: string;
@@ -70,8 +72,8 @@ export const STATE_LABEL: Record<MarketState, string> = {
   void: "Void",
 };
 
-export async function listMarkets(groupId: string): Promise<
-  Array<{ market: Market; totals: Totals | null }>
+export async function listMarkets(groupId: string, userId?: string): Promise<
+  Array<{ market: Market; totals: Totals | null; joined: boolean }>
 > {
   const markets = await select<Market>("markets", {
     group_id: `eq.${groupId}`,
@@ -80,14 +82,22 @@ export async function listMarkets(groupId: string): Promise<
   if (markets.length === 0) return [];
 
   const ids = markets.map((m) => m.id).join(",");
-  const totals = await select<Totals>("market_totals", {
-    market_id: `in.(${ids})`,
-  });
+  const [totals, participation] = await Promise.all([
+    select<Totals>("market_totals", { market_id: `in.(${ids})` }),
+    userId
+      ? select<{ market_id: string }>("market_participants", {
+          market_id: `in.(${ids})`,
+          user_id: `eq.${userId}`,
+        })
+      : [],
+  ]);
   const byId = new Map(totals.map((t) => [t.market_id, t]));
+  const joinedIds = new Set(participation.map((row) => row.market_id));
 
   return markets.map((market) => ({
     market,
     totals: byId.get(market.id) ?? null,
+    joined: joinedIds.has(market.id),
   }));
 }
 
@@ -104,7 +114,7 @@ export async function getMarket(
   });
   if (!market) return null;
 
-  const [sides, pools, totals, myStakes] = await Promise.all([
+  const [sides, pools, totals, myStakes, participation, membership] = await Promise.all([
     select<Side>("market_sides", {
       market_id: `eq.${marketId}`,
       order: "ordinal.asc",
@@ -115,9 +125,27 @@ export async function getMarket(
       market_id: `eq.${marketId}`,
       user_id: `eq.${userId}`,
     }),
+    selectOne<{ market_id: string }>("market_participants", {
+      market_id: `eq.${marketId}`,
+      user_id: `eq.${userId}`,
+    }),
+    selectOne<{ phone_hash: string }>("group_members", {
+      group_id: `eq.${groupId}`,
+      user_id: `eq.${userId}`,
+    }),
   ]);
 
-  return { market, sides, pools, totals, myStakes };
+  return {
+    market,
+    sides,
+    pools,
+    totals,
+    myStakes,
+    joined: Boolean(participation),
+    isSubject: Boolean(
+      market.subject_phone_hash && membership?.phone_hash === market.subject_phone_hash,
+    ),
+  };
 }
 
 /**

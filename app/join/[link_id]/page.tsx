@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Masthead, Shell, SectionLabel } from "../../shell";
+import { currentMembership } from "../../lib/auth";
 import { JoinForm } from "../join-form";
 
 export const metadata: Metadata = { title: "Join a group — Sidebar" };
@@ -14,6 +16,7 @@ export const metadata: Metadata = { title: "Join a group — Sidebar" };
 export default async function JoinByLinkPage({
   params,
 }: PageProps<"/join/[link_id]">) {
+  if (await currentMembership()) redirect("/group");
   const { link_id } = await params;
 
   return (
@@ -24,11 +27,11 @@ export default async function JoinByLinkPage({
           <div className="lg:col-span-4">
             <SectionLabel>Entry</SectionLabel>
             <h1 className="type-head mt-3 text-balance">
-              Someone sent you this. You still need the password.
+              Now identify yourself inside the group.
             </h1>
             <p className="measure mt-5 leading-relaxed text-muted">
-              The link identifies the group. The password proves you were meant
-              to have it.
+              Your phone opens the same member UUID every time. The shared
+              password proves you were meant to have access.
             </p>
           </div>
 

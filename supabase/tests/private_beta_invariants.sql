@@ -16,15 +16,48 @@ declare
   v_no uuid;
   v_before integer;
   v_after integer;
+  v_entry jsonb;
   v_failed boolean := false;
 begin
-  v_created := public.create_group_with_owner(
+  v_created := public.create_group_with_owner_phone(
     'Invariant test', 'TEST-BETA', 'test-password-hash', 'Owner',
-    'owner@example.com', repeat('a', 64), 1000
+    'owner@example.com', repeat('a', 64), repeat('4', 64),
+    'SB-AAAA-BBBB-CCCC', 1000
   );
   v_group := (v_created->>'group_id')::uuid;
   v_owner := (v_created->>'user_id')::uuid;
-  v_member := public.join_group_member(v_group, 'Member', repeat('b', 64), 1000);
+  v_member := public.join_group_member_phone(
+    v_group, 'Member', repeat('b', 64), repeat('5', 64),
+    'SB-DDDD-EEEE-FFFF', 1000
+  );
+
+  select count(*) into v_before
+  from public.group_members where group_id = v_group;
+  v_entry := public.enter_group_member_phone(
+    v_group, '  member  ', repeat('9', 64), repeat('5', 64),
+    'SB-DDDD-EEEE-FFFF', 1000
+  );
+  select count(*) into v_after
+  from public.group_members where group_id = v_group;
+  if (v_entry->>'user_id')::uuid <> v_member
+    or (v_entry->>'created')::boolean
+    or v_after <> v_before
+  then
+    raise exception 'phone login did not reuse the registered member UUID';
+  end if;
+
+  v_failed := false;
+  begin
+    perform public.enter_group_member_phone(
+      v_group, 'Member', repeat('8', 64), repeat('8', 64),
+      'SB-PPPP-QQQQ-RRRR', 1000
+    );
+  exception when unique_violation then
+    v_failed := true;
+  end;
+  if not v_failed then
+    raise exception 'a duplicate normalized member name created another UUID';
+  end if;
 
   insert into public.imessage_setup_tokens (
     token_hash, conversation_hash, sender_hash, group_id, expires_at
@@ -50,8 +83,9 @@ begin
     repeat('f', 64), repeat('1', 64), repeat('2', 64),
     now() + interval '15 minutes'
   );
-  v_imessage_member := public.join_group_member_imessage(
-    repeat('f', 64), v_group, 'iMessage member', repeat('3', 64), 1000
+  v_imessage_member := public.join_group_member_phone_imessage(
+    repeat('f', 64), v_group, 'iMessage member', repeat('3', 64),
+    repeat('6', 64), 'SB-GGGG-HHHH-JJJJ', 1000
   );
   if not exists (
     select 1 from public.imessage_identities
@@ -68,7 +102,10 @@ begin
 
   select count(*) into v_before from public.users;
   begin
-    perform public.join_group_member(v_group, 'Collision', repeat('a', 64), 1000);
+    perform public.join_group_member_phone(
+      v_group, 'Collision', repeat('a', 64), repeat('7', 64),
+      'SB-KKKK-MMMM-NNNN', 1000
+    );
   exception when unique_violation then
     v_failed := true;
   end;
@@ -88,8 +125,10 @@ begin
   select id into v_yes from public.market_sides where market_id = v_market and ordinal = 0;
   select id into v_no from public.market_sides where market_id = v_market and ordinal = 1;
 
-  perform public.place_stake(v_market, v_yes, v_owner, 100);
-  perform public.place_stake(v_market, v_no, v_member, 300);
+  perform public.join_market(v_market, v_owner);
+  perform public.join_market(v_market, v_member);
+  perform public.place_stake_joined(v_market, v_yes, v_owner, 100);
+  perform public.place_stake_joined(v_market, v_no, v_member, 300);
 
   if exists (
     select 1 from public.market_pools_sealed
@@ -152,7 +191,8 @@ begin
   select adjudicator_id into v_adjudicator from public.markets where id = v_market;
   select id into v_yes from public.market_sides where market_id = v_market and ordinal = 0;
   select id into v_no from public.market_sides where market_id = v_market and ordinal = 1;
-  perform public.place_stake(v_market, v_yes, v_owner, 100);
+  perform public.join_market(v_market, v_owner);
+  perform public.place_stake_joined(v_market, v_yes, v_owner, 100);
   update public.markets
   set reveal_at = now() - interval '3 hours',
       close_at = now() - interval '2 hours',
@@ -164,6 +204,20 @@ begin
   if public.points_balance(v_group, v_owner) <> 1300 then
     raise exception 'void did not refund the stake';
   end if;
+
+  v_market := public.open_market_with_subject(
+    v_group, v_owner, 'Will Member be late?', 'The clock decides.',
+    now() + interval '1 hour', now() + interval '2 hours', now() + interval '3 hours',
+    'Member', repeat('5', 64)
+  );
+  v_failed := false;
+  begin
+    perform public.join_market(v_market, v_member);
+  exception when insufficient_privilege then
+    v_failed := true;
+  end;
+  if not v_failed then raise exception 'market subject joined their own market'; end if;
+  perform public.join_market(v_market, v_owner);
 
   raise notice 'private beta invariant tests passed';
 end $$;

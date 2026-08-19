@@ -48,6 +48,22 @@ export function CreateGroupForm({ imessageToken }: { imessageToken?: string }) {
           />
         </Field>
 
+        <Field label="Your phone number" htmlFor="phone">
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            required
+            autoComplete="tel"
+            placeholder="(212) 555-0199"
+            className={INPUT}
+          />
+          <p className="mt-2 text-xs text-muted">
+            Creates your private, stable Sidebar member code. The number is not
+            displayed to anyone in the group.
+          </p>
+        </Field>
+
         <Field label="Your email" htmlFor="email">
           <input
             id="email"

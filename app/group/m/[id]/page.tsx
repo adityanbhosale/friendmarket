@@ -14,6 +14,7 @@ import {
   type MarketState,
 } from "../../../lib/market-data";
 import { StakeForm, ResolveForm } from "./market-forms";
+import { ParticipationForm } from "./participation-form";
 
 export const metadata: Metadata = { title: "Market — Sidebar" };
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export default async function MarketPage({
   const data = await getMarket(id, group.id, user.id);
   if (!data) notFound();
 
-  const { market, sides, pools, totals, myStakes } = data;
+  const { market, sides, pools, totals, myStakes, joined, isSubject } = data;
   const state = marketState(market);
   const resolutionReady = canResolveAt(market);
   const [balance, adjudicator] = await Promise.all([
@@ -47,7 +48,7 @@ export default async function MarketPage({
   ]);
 
   const isAdjudicator = market.adjudicator_id === user.id;
-  const canStake = state === "seeding" || state === "open";
+  const canStake = (state === "seeding" || state === "open") && joined && !isSubject;
   const canResolve = isAdjudicator && state === "closed" && resolutionReady;
   const sealed = state === "seeding";
 
@@ -73,6 +74,7 @@ export default async function MarketPage({
               <Row label="Seeding ends" value={when(market.reveal_at)} />
               <Row label="Closes" value={when(market.close_at)} />
               <Row label="Resolution opens" value={when(market.resolve_at)} />
+              {market.subject_name && <Row label="Subject" value={market.subject_name} />}
               <Row label="Adjudicator" value={adjudicator?.name ?? "Unknown member"} last />
             </dl>
           </div>
@@ -181,13 +183,31 @@ export default async function MarketPage({
               )}
 
               <div className="mt-8">
+                {isSubject && (
+                  <p className="border-t border-foreground pt-6 text-sm text-muted">
+                    You are the subject of this market. You can follow its state,
+                    but you cannot join or stake points in it.
+                  </p>
+                )}
+
+                {!isSubject && (state === "seeding" || state === "open") && !joined && (
+                  <ParticipationForm marketId={market.id} joined={false} />
+                )}
+
                 {canStake && (
-                  <StakeForm
-                    marketId={market.id}
-                    sides={sides.map((s) => ({ id: s.id, label: s.label }))}
-                    balance={balance}
-                    sealed={sealed}
-                  />
+                  <>
+                    <StakeForm
+                      marketId={market.id}
+                      sides={sides.map((s) => ({ id: s.id, label: s.label }))}
+                      balance={balance}
+                      sealed={sealed}
+                    />
+                    <ParticipationForm
+                      marketId={market.id}
+                      joined
+                      canLeave={myStakes.length === 0}
+                    />
+                  </>
                 )}
 
                 {canResolve && (

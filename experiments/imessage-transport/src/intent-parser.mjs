@@ -5,6 +5,8 @@ const ACTIONS = new Set([
   "list_markets",
   "show_market",
   "create_market",
+  "join_market",
+  "leave_market",
   "place_bet",
   "resolve_market",
   "unknown",
@@ -36,6 +38,9 @@ export function parseDeterministicIntent(text, { now = new Date(), markets = [] 
   }
   const bet = parseBet(request, markets);
   if (bet) return bet;
+
+  const participation = parseParticipation(request, markets);
+  if (participation) return participation;
 
   const resolution = parseResolution(request, markets);
   if (resolution) return resolution;
@@ -219,6 +224,24 @@ function parseResolution(request, markets) {
   });
 }
 
+function parseParticipation(request, markets) {
+  const action = /^\s*(join|enter|leave|exit)\b/i.exec(request)?.[1]?.toLowerCase();
+  if (!action) return null;
+  const marketNumber = extractMarketNumber(request);
+  if (marketNumber != null) {
+    return intent(new Set(["join", "enter"]).has(action) ? "join_market" : "leave_market", {
+      marketNumber,
+    });
+  }
+  const matched = resolveMarketReference(request, markets);
+  if (!matched.intent) {
+    return unknown(matched.clarification || "Which market do you mean?");
+  }
+  return intent(new Set(["join", "enter"]).has(action) ? "join_market" : "leave_market", {
+    marketNumber: matched.intent,
+  });
+}
+
 function resolveMarketReference(reference, markets) {
   if (!Array.isArray(markets) || markets.length === 0) return {};
   const referenceTokens = meaningfulTokens(reference);
@@ -260,6 +283,10 @@ const MATCH_STOPWORDS = new Set([
   "bet",
   "for",
   "is",
+  "join",
+  "enter",
+  "leave",
+  "exit",
   "market",
   "on",
   "points",
@@ -372,6 +399,7 @@ function buildSystemPrompt({ now, timezone, markets }) {
     "Use unknown with a short clarification when the request is ambiguous or incomplete.",
     "create_market needs a question and closeAt; preserve the user's meaning. criteria may summarize the stated resolution condition.",
     "place_bet needs marketNumber, side yes/no, and a positive whole-number amount.",
+    "join_market and leave_market need marketNumber.",
     "resolve_market needs marketNumber and side yes/no/void.",
     `Current time: ${now.toISOString()}`,
     `Group timezone: ${timezone}`,
