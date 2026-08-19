@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Masthead, Shell, SectionLabel } from "../shell";
+import { currentMembership } from "../lib/auth";
 import { GroupCodeForm } from "./group-code-form";
 
 export const metadata: Metadata = { title: "Join a group — Sidebar" };
 
-export default function JoinPage() {
+export default async function JoinPage() {
+  if (await currentMembership()) redirect("/group");
+
   return (
     <main className="flex-1">
       <Masthead up="/" />

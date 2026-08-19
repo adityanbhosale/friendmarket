@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Masthead, Shell, SectionLabel } from "../../shell";
+import { currentMembership } from "../../lib/auth";
 import { JoinForm } from "../join-form";
 
 export const metadata: Metadata = { title: "Join a group — Sidebar" };
@@ -14,6 +16,7 @@ export const metadata: Metadata = { title: "Join a group — Sidebar" };
 export default async function JoinByLinkPage({
   params,
 }: PageProps<"/join/[link_id]">) {
+  if (await currentMembership()) redirect("/group");
   const { link_id } = await params;
 
   return (
