@@ -57,6 +57,22 @@ export function JoinForm({
           />
         </Field>
 
+        <Field label="Your phone number" htmlFor="phone">
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            required
+            autoComplete="tel"
+            placeholder="(212) 555-0199"
+            className={INPUT}
+          />
+          <p className="mt-2 text-xs text-muted">
+            Used privately to assign your stable member code. It is never shown
+            to the group.
+          </p>
+        </Field>
+
         <Field label="Your name" htmlFor="name" last>
           <input
             id="name"

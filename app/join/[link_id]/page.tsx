@@ -24,11 +24,11 @@ export default async function JoinByLinkPage({
           <div className="lg:col-span-4">
             <SectionLabel>Entry</SectionLabel>
             <h1 className="type-head mt-3 text-balance">
-              Someone sent you this. You still need the password.
+              Now identify yourself inside the group.
             </h1>
             <p className="measure mt-5 leading-relaxed text-muted">
-              The link identifies the group. The password proves you were meant
-              to have it.
+              Your phone creates a stable member code. The shared password
+              proves you were meant to have access.
             </p>
           </div>
 

@@ -79,6 +79,31 @@ test("matches a resolution description and rejects ambiguous market references",
   assert.match(ambiguous.clarification, /more than one possible market/i);
 });
 
+test("matches join and leave commands by question instead of requiring a number", () => {
+  const markets = [{ display_num: 1, question: "Will Adi black out tonight?" }];
+  assert.deepEqual(
+    parseDeterministicIntent("@sidebar, join adi blacking out tonight", { markets }),
+    {
+      action: "join_market",
+      marketNumber: 1,
+      side: null,
+      amount: null,
+      question: null,
+      criteria: null,
+      revealAt: null,
+      closeAt: null,
+      resolveAt: null,
+      confidence: 1,
+      clarification: null,
+      source: "deterministic",
+    },
+  );
+  assert.equal(
+    parseDeterministicIntent("@sidebar, leave market 1", { markets }).action,
+    "leave_market",
+  );
+});
+
 test("parses a final-payout request as a market detail read", () => {
   assert.deepEqual(parseDeterministicIntent("show payouts for market 3"), {
     action: "show_market",

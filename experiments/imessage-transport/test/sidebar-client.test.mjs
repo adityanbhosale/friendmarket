@@ -130,14 +130,19 @@ test("lists markets only from the bound Sidebar group", async () => {
       }
       if (parsed.pathname.endsWith("/market_totals")) return json([]);
       if (parsed.pathname.endsWith("/users")) return json([{ id: "user-a", name: "Ada" }]);
+      if (parsed.pathname.endsWith("/market_participants")) {
+        assert.equal(parsed.searchParams.get("user_id"), "eq.user-a");
+        return json([{ market_id: "market-a", user_id: "user-a" }]);
+      }
       throw new Error(`Unexpected request: ${url}`);
     },
   });
 
-  const rows = await client.listMarkets("group-a");
+  const rows = await client.listMarkets("group-a", "user-a");
   assert.equal(rows.length, 1);
   assert.equal(rows[0].market.group_id, "group-a");
   assert.equal(rows[0].adjudicatorName, "Ada");
+  assert.equal(rows[0].joined, true);
   assert.equal(requests.some((url) => url.includes("group-b")), false);
 });
 

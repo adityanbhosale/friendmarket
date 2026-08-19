@@ -25,6 +25,14 @@ export type Group = {
   admin_email: string | null;
 };
 
+export type GroupMembership = {
+  group_id: string;
+  user_id: string;
+  phone_hash: string;
+  identity_code: string;
+  phone_attached_at: string | null;
+};
+
 /**
  * Admin is a single person: whoever opened the group. There is no grant path
  * and nothing to revoke, which is the point — the role exists so one named
@@ -45,11 +53,12 @@ export async function currentMembership(): Promise<{
   session: Session;
   user: User;
   group: Group;
+  membership: GroupMembership;
 } | null> {
   const session = await getSession();
   if (!session) return null;
 
-  const membership = await selectOne<{ group_id: string; user_id: string }>(
+  const membership = await selectOne<GroupMembership>(
     "group_members",
     { group_id: `eq.${session.gid}`, user_id: `eq.${session.uid}` },
   );
@@ -61,7 +70,7 @@ export async function currentMembership(): Promise<{
   ]);
   if (!user || !group) return null;
 
-  return { session, user, group };
+  return { session, user, group, membership };
 }
 
 /** Same, but sends anyone without a live membership to the join page. */

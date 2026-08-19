@@ -19,6 +19,8 @@ export const dynamic = "force-dynamic";
 type MemberRow = {
   user_id: string;
   joined_at: string;
+  identity_code: string;
+  phone_attached_at: string | null;
   users: { name: string } | null;
 };
 
@@ -28,7 +30,7 @@ export default async function AdminPage() {
   const [members, markets] = await Promise.all([
     select<MemberRow>("group_members", {
       group_id: `eq.${group.id}`,
-      select: "user_id,joined_at,users(name)",
+      select: "user_id,joined_at,identity_code,phone_attached_at,users(name)",
       order: "joined_at.asc",
     }),
     listMarkets(group.id),
@@ -136,11 +138,16 @@ export default async function AdminPage() {
                       <span className="ml-2 text-xs text-muted">admin</span>
                     )}
                   </span>
-                  <span className="font-mono text-xs text-muted tabular-nums">
-                    {new Date(m.joined_at).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })}
+                  <span className="text-right font-mono text-xs text-muted tabular-nums">
+                    <span className="block">
+                      {m.phone_attached_at ? m.identity_code : "identity pending"}
+                    </span>
+                    <span className="block">
+                      {new Date(m.joined_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
                   </span>
                 </li>
               ))}

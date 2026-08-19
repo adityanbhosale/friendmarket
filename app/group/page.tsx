@@ -12,6 +12,7 @@ import {
 } from "../lib/market-data";
 import { signOut } from "../lib/actions";
 import { RecoveryCodeForm } from "./recovery-code-form";
+import { PhoneIdentityForm } from "./phone-identity-form";
 
 export const metadata: Metadata = { title: "Your group — Sidebar" };
 
@@ -19,14 +20,16 @@ export const metadata: Metadata = { title: "Your group — Sidebar" };
 export const dynamic = "force-dynamic";
 
 export default async function GroupPage() {
-  const { user, group } = await requireMembership();
+  const { user, group, membership } = await requireMembership();
   const admin = isAdmin(group, user);
 
   const [balance, members, markets] = await Promise.all([
     getBalance(group.id, user.id),
     count("group_members", { group_id: `eq.${group.id}` }),
-    listMarkets(group.id),
+    listMarkets(group.id, user.id),
   ]);
+  const joinedMarkets = markets.filter((market) => market.joined);
+  const availableMarkets = markets.filter((market) => !market.joined);
 
   return (
     <main className="flex-1">
@@ -45,6 +48,11 @@ export default async function GroupPage() {
                 value={admin ? `${user.name} · admin` : user.name}
               />
               <Row
+                label="Member code"
+                value={membership.phone_attached_at ? membership.identity_code : "Pending"}
+                mono
+              />
+              <Row
                 label="Your points"
                 value={balance.toLocaleString("en-US")}
                 mono
@@ -56,6 +64,8 @@ export default async function GroupPage() {
               Anyone with the group ID and the password can join. Send them
               separately if you care about who gets in.
             </p>
+
+            {!membership.phone_attached_at && <PhoneIdentityForm />}
 
             {admin && (
               <p className="mt-5">
@@ -83,59 +93,89 @@ export default async function GroupPage() {
           <div className="lg:col-span-7 lg:col-start-6">
             <div className="flex items-baseline justify-between gap-4">
               <SectionLabel>Markets</SectionLabel>
-              <Link
-                href="/group/new"
-                className="text-sm text-muted hover:text-foreground"
-              >
-                Open a market →
-              </Link>
+              {membership.phone_attached_at && (
+                <Link
+                  href="/group/new"
+                  className="text-sm text-muted hover:text-foreground"
+                >
+                  Open a market →
+                </Link>
+              )}
             </div>
 
-            {markets.length === 0 ? (
+            {!membership.phone_attached_at ? (
+              <p className="measure mt-6 leading-relaxed text-muted">
+                Attach your phone identity to join markets, stake points, or
+                open a new market. Your existing group access stays intact.
+              </p>
+            ) : markets.length === 0 ? (
               <p className="measure mt-6 leading-relaxed text-muted">
                 Nothing open yet. Someone has to go first.
               </p>
             ) : (
-              <div className="mt-6 border-t border-b border-foreground">
-                {markets.map(({ market, totals }) => {
-                  const state = marketState(market);
-                  return (
-                    <Link
-                      key={market.id}
-                      href={`/group/m/${market.id}`}
-                      className="block border-b border-rule py-4 last:border-b-0 hover:bg-[#fafafa]"
-                    >
-                      <div className="flex items-baseline justify-between gap-4 text-xs text-muted">
-                        <span className="font-mono tabular-nums">
-                          {String(market.display_num).padStart(4, "0")}
-                        </span>
-                        <span>{STATE_LABEL[state]}</span>
-                      </div>
-
-                      <p className="mt-2 leading-snug font-medium text-balance">
-                        {market.question}
-                      </p>
-
-                      <div className="mt-2 flex flex-wrap gap-x-5 text-xs text-muted">
-                        <span>
-                          {totals?.participants ?? 0}{" "}
-                          {totals?.participants === 1 ? "bettor" : "bettors"}
-                        </span>
-                        {/* The view returns no number until reveal (009);
-                            this only picks the words for its absence. */}
-                        <span className="font-mono tabular-nums">
-                          {poolLabel(totals)}
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })}
+              <div className="mt-6 grid gap-10">
+                <MarketSection title="Joined" rows={joinedMarkets} empty="You haven't joined a market yet." />
+                <MarketSection
+                  title="Not joined"
+                  rows={availableMarkets}
+                  empty="You've joined every market in this group."
+                />
               </div>
             )}
           </div>
         </div>
       </Shell>
     </main>
+  );
+}
+
+function MarketSection({
+  title,
+  rows,
+  empty,
+}: {
+  title: string;
+  rows: Awaited<ReturnType<typeof listMarkets>>;
+  empty: string;
+}) {
+  return (
+    <section>
+      <h2 className="text-xs tracking-wider text-muted uppercase">{title}</h2>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">{empty}</p>
+      ) : (
+        <div className="mt-3 border-t border-b border-foreground">
+          {rows.map(({ market, totals }) => {
+            const state = marketState(market);
+            return (
+              <Link
+                key={market.id}
+                href={`/group/m/${market.id}`}
+                className="block border-b border-rule py-4 last:border-b-0 hover:bg-[#fafafa]"
+              >
+                <div className="flex items-baseline justify-between gap-4 text-xs text-muted">
+                  <span className="font-mono tabular-nums">
+                    {String(market.display_num).padStart(4, "0")}
+                  </span>
+                  <span>{STATE_LABEL[state]}</span>
+                </div>
+                <p className="mt-2 leading-snug font-medium text-balance">
+                  {market.question}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-x-5 text-xs text-muted">
+                  {market.subject_name && <span>about {market.subject_name}</span>}
+                  <span>
+                    {totals?.participants ?? 0}{" "}
+                    {totals?.participants === 1 ? "bettor" : "bettors"}
+                  </span>
+                  <span className="font-mono tabular-nums">{poolLabel(totals)}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 

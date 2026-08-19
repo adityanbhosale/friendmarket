@@ -591,12 +591,17 @@ export default function Docs() {
 
             <Section id="house-rules" n="11" title="House rules">
               <P>
-                <strong>The subject may bet on themselves</strong>, including on
-                their own failure. This is a feature and it is disclosed as one:
-                the subject holds the best information and the most control over
-                the outcome, and everyone else can see them bet and price it
-                accordingly. A subject quietly backing their own failure is not
-                a scandal. It is the most informative thing on the board.
+                <strong>The subject may watch, but may not bet.</strong> A person
+                market records the subject&apos;s private phone identity when it is
+                opened. If that identity belongs to a group member now or later,
+                Sidebar keeps the market visible to them but refuses both market
+                participation and stakes.
+              </P>
+              <P>
+                <strong>Group membership is not market participation.</strong>{" "}
+                Every group member can see every market. Joining a market is an
+                explicit choice and is required before staking; joined and
+                unjoined markets remain separate on the dashboard.
               </P>
               <P>
                 <strong>Integer points only.</strong> No fractions, no dust, no

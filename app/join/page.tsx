@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Masthead, Shell, SectionLabel } from "../shell";
-import { JoinForm } from "./join-form";
+import { GroupCodeForm } from "./group-code-form";
 
 export const metadata: Metadata = { title: "Join a group — Sidebar" };
 
@@ -13,16 +13,16 @@ export default function JoinPage() {
           <div className="lg:col-span-4">
             <SectionLabel>Entry</SectionLabel>
             <h1 className="type-head mt-3 text-balance">
-              Groups are private. You need the link and the password.
+              Start with the code your group gave you.
             </h1>
             <p className="measure mt-5 leading-relaxed text-muted">
-              Whoever opened the group has both. Ask them, not us — we can&apos;t
-              recover a group password.
+              Next, attach your name and phone identity, then enter the shared
+              password. Sidebar never displays your phone number.
             </p>
           </div>
 
           <div className="lg:col-span-6 lg:col-start-6">
-            <JoinForm />
+            <GroupCodeForm />
           </div>
         </div>
       </Shell>

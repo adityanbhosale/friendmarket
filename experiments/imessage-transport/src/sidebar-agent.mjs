@@ -58,7 +58,7 @@ export function createSidebarAgent({
 
     try {
       await client.requireMembership(binding.groupId, binding.userId);
-      const marketRows = await client.listMarkets(binding.groupId);
+      const marketRows = await client.listMarkets(binding.groupId, binding.userId);
       const intent = await parseIntent({
         text: envelope.text,
         now: now(),
@@ -66,7 +66,7 @@ export function createSidebarAgent({
         markets: marketRows.map(({ market }) => market),
       });
       if (!intent) return null;
-      return executeIntent({
+      return await executeIntent({
         client,
         intent,
         binding,
@@ -95,6 +95,7 @@ export async function executeIntent({
     case "help":
       return [
         "I can create and list markets, show odds/pot/time, place Yes or No bets, and resolve markets.",
+        "Join a market before betting. Person markets must be opened on the web so the subject's private phone identity can be attached.",
         "Try: “@sidebar, create a market: Will Dan be late? closes in 2 hours”",
         "Or: “@sidebar, put 40 points on Dan being late”",
       ].join("\n");
@@ -119,6 +120,26 @@ export async function executeIntent({
         ...input,
       });
       return `Created market #${market.display_num}: ${market.question}\nBetting closes ${formatInstant(market.close_at, timezone)}.`;
+    }
+    case "join_market": {
+      requirePositiveInteger(intent.marketNumber, "market number");
+      if (dryRun) return `Would join market #${intent.marketNumber}.`;
+      await client.joinMarket({
+        groupId: binding.groupId,
+        userId: binding.userId,
+        marketNumber: intent.marketNumber,
+      });
+      return `Joined market #${intent.marketNumber}. You can now place a bet.`;
+    }
+    case "leave_market": {
+      requirePositiveInteger(intent.marketNumber, "market number");
+      if (dryRun) return `Would leave market #${intent.marketNumber}.`;
+      await client.leaveMarket({
+        groupId: binding.groupId,
+        userId: binding.userId,
+        marketNumber: intent.marketNumber,
+      });
+      return `Left market #${intent.marketNumber}.`;
     }
     case "place_bet": {
       requirePositiveInteger(intent.marketNumber, "market number");
@@ -189,10 +210,11 @@ function formatMarketList(rows, now) {
   if (rows.length === 0) return "There are no markets in this Sidebar group yet.";
   return rows
     .slice(0, 10)
-    .map(({ market, totals, adjudicatorName }) => {
+    .map(({ market, totals, adjudicatorName, joined }) => {
       const state = marketState(market, now);
       const pot = totals?.revealed ? ` · ${totals.total_pool ?? 0} point pot` : " · pot sealed";
-      return `#${market.display_num} ${market.question} — ${titleCase(state)}${pot} · adjudicator ${adjudicatorName}`;
+      const participation = joined ? "joined" : "not joined";
+      return `#${market.display_num} ${market.question} — ${titleCase(state)} · ${participation}${pot} · adjudicator ${adjudicatorName}`;
     })
     .join("\n");
 }
