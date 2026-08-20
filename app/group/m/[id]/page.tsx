@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Masthead, Shell, SectionLabel } from "../../../shell";
 import { requireMembership } from "../../../lib/auth";
@@ -59,7 +60,7 @@ export default async function MarketPage({
 
   return (
     <main className="flex-1">
-      <Masthead up="/group" />
+      <Masthead up="/group" upLabel={group.name} />
       <Shell>
         <div className="grid gap-x-12 gap-y-12 py-16 sm:py-20 lg:grid-cols-12">
           <div className="lg:col-span-4">
@@ -232,6 +233,18 @@ export default async function MarketPage({
             </div>
           </div>
         </div>
+
+        {/* The masthead link is the other way out, but a market page can run
+            long enough that it scrolls away. This one is where you finish
+            reading. */}
+        <p className="pb-16 sm:pb-20">
+          <Link
+            href="/group"
+            className="text-sm text-muted underline decoration-1 underline-offset-4 hover:text-foreground"
+          >
+            ← Back to {group.name}
+          </Link>
+        </p>
       </Shell>
     </main>
   );

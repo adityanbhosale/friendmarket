@@ -61,9 +61,17 @@ function NavLink({
  */
 export function Masthead({
   up,
+  upLabel = "Sidebar",
   current,
 }: {
   up?: string;
+  /**
+   * What the back link is called. Defaults to the wordmark, which is right
+   * when `up` is the homepage and a lie everywhere else — a market page sent
+   * you to the group dashboard while the link read "← Sidebar", so the way
+   * back to your own group looked like the way out of it.
+   */
+  upLabel?: string;
   current?: NavKey;
 }) {
   return (
@@ -73,8 +81,13 @@ export function Masthead({
           <span className="type-wordmark flex items-center gap-2 font-medium">
             <Logo className="h-[0.95em] w-auto shrink-0" />
             {up ? (
-              <Link href={up} className="hover:text-muted">
-                ← Sidebar
+              <Link
+                href={up}
+                // Group names run to 60 characters; the wordmark is set large
+                // enough that one would push the nav off the header.
+                className="block max-w-[9ch] truncate hover:text-muted sm:max-w-[18ch]"
+              >
+                ← {upLabel}
               </Link>
             ) : (
               "Sidebar"

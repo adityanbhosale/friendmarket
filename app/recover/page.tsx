@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Recover your place — Sidebar" };
 export default function RecoverPage() {
   return (
     <main className="flex-1">
-      <Masthead up="/join" />
+      <Masthead up="/join" upLabel="Join" />
       <Shell>
         <div className="grid gap-x-12 gap-y-10 py-20 sm:py-24 lg:grid-cols-12 lg:py-32">
           <div className="lg:col-span-4">

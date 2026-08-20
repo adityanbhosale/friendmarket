@@ -7,11 +7,11 @@ export const metadata: Metadata = { title: "Open a market — Sidebar" };
 export const dynamic = "force-dynamic";
 
 export default async function NewMarketPage() {
-  await requireMembership();
+  const { group } = await requireMembership();
 
   return (
     <main className="flex-1">
-      <Masthead up="/group" />
+      <Masthead up="/group" upLabel={group.name} />
       <Shell>
         <div className="grid gap-x-12 gap-y-10 py-16 sm:py-20 lg:grid-cols-12">
           <div className="lg:col-span-4">

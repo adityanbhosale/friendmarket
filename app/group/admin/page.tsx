@@ -52,7 +52,7 @@ export default async function AdminPage() {
 
   return (
     <main className="flex-1">
-      <Masthead up="/group" />
+      <Masthead up="/group" upLabel={group.name} />
       <Shell>
         <div className="py-16 sm:py-20">
           <SectionLabel>Admin</SectionLabel>
