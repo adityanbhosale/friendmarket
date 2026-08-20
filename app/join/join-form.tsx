@@ -73,7 +73,7 @@ export function JoinForm({
           </p>
         </Field>
 
-        <Field label="Your name" htmlFor="name" last>
+        <Field label="Your name" htmlFor="name">
           <input
             id="name"
             name="name"
@@ -84,6 +84,24 @@ export function JoinForm({
             placeholder="What the group calls you"
             className={INPUT}
           />
+        </Field>
+
+        <Field label="Your email" htmlFor="email" last>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            maxLength={254}
+            autoComplete="email"
+            placeholder="you@example.com"
+            className={INPUT}
+          />
+          <p className="mt-2 text-xs text-muted">
+            The first time you join we send your group code, member ID, and
+            recovery code here. The recovery code is stored as a hash, so it
+            can never be sent to you a second time.
+          </p>
         </Field>
       </div>
 

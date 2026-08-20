@@ -83,78 +83,124 @@ const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /**
- * The registration mail. Carries the group ID, because that is the thing
- * people lose, and the two links they will want later.
+ * The one mail Sidebar sends a person: everything they need to get back in,
+ * and everything they need to bring someone else in.
  *
- * It does NOT carry the group password. The password is the other half of the
- * credential, and mail is the least private place either half could sit — an
- * inbox is forwarded, synced, and searched. Anyone holding both halves is in
- * the group. Sending one is a convenience; sending both would post the keys
- * through the letterbox.
+ * Sent on opening a group and on first joining one, because both people have
+ * exactly the same problem — a group code and a recovery code shown once on a
+ * screen they are about to navigate away from.
+ *
+ * It carries the recovery code. That is a bearer credential and mail is an
+ * imperfect place for one, but the alternative is worse in a specific way:
+ * only a SHA-256 of the code is ever stored, so there is no mechanism by which
+ * it could be sent later. The moment of issue is the only chance to give
+ * someone a durable copy, and a code nobody kept is a member locked out of
+ * their own points for good.
+ *
+ * It does NOT carry the group password. That one is shared by the whole group,
+ * it is not needed to recover an identity, and mailing it to every joiner
+ * would scatter the group's front-door key across as many inboxes as there are
+ * members.
  */
-export function registrationMail(args: {
+export function membershipMail(args: {
+  role: "admin" | "member";
   groupName: string;
   linkId: string;
-  adminName: string;
+  memberName: string;
+  memberId: string;
+  recoveryCode: string;
 }): Mail {
-  const { groupName, linkId, adminName } = args;
+  const { role, groupName, linkId, memberName, memberId, recoveryCode } = args;
+  const isAdmin = role === "admin";
   const joinUrl = `${SITE_URL}/join/${linkId}`;
+  const recoverUrl = `${SITE_URL}/recover`;
   const adminUrl = `${SITE_URL}/group/admin`;
 
+  const opening = isAdmin
+    ? `${groupName} is open, and you are its admin.`
+    : `You are in ${groupName}.`;
+
   const text = [
-    `${groupName} is open.`,
+    opening,
     ``,
-    `Group ID: ${linkId}`,
+    `Keep this email. Everything below is either impossible or annoying to`,
+    `recover, and the recovery code cannot be reissued at all.`,
     ``,
-    `That ID is how people get in, and it is not recoverable from anywhere`,
-    `else — we do not list groups by name. Keep this email.`,
+    `GROUP CODE    ${linkId}`,
+    `RECOVERY CODE ${recoveryCode}`,
+    `YOUR MEMBER ID ${memberId}`,
     ``,
-    `Invite link:  ${joinUrl}`,
-    `Admin view:   ${adminUrl}`,
+    `The recovery code restores this identity — your points and your stakes —`,
+    `on another device or after clearing your browser. We only keep a hash of`,
+    `it, so nobody can send it to you again, including us.`,
+    `Use it at: ${recoverUrl}`,
     ``,
-    `Anyone joining needs the ID and the group password. The password is not`,
-    `in this email and never will be — send it to your group some other way.`,
-    ``,
-    `You are the admin of ${groupName}, which means the admin view is yours:`,
-    `who has joined, what markets are open, and what still needs resolving.`,
+    `To bring people in, send them:`,
+    `  ${joinUrl}`,
+    `...and the group password, separately. The password is not in this email`,
+    `and never will be.`,
+    ...(isAdmin
+      ? [``, `Admin view — members, markets, what still needs resolving:`, `  ${adminUrl}`]
+      : []),
     ``,
     `— Sidebar. Points only.`,
   ].join("\n");
 
+  const row = (label: string, value: string, mono = true) => `
+      <tr>
+        <td style="padding:12px 0;font-size:12px;color:#666666;white-space:nowrap;vertical-align:top">${label}</td>
+        <td style="padding:12px 0 12px 16px;text-align:right;${
+          mono ? "font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" : ""
+        }font-size:14px;word-break:break-all">${esc(value)}</td>
+      </tr>`;
+
   const html = `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#ffffff;color:#111111;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55">
-  <div style="max-width:520px;margin:0 auto">
-    <p style="margin:0 0 24px;font-size:20px;font-weight:500;letter-spacing:-0.02em">${esc(groupName)} is open.</p>
+  <div style="max-width:560px;margin:0 auto">
+    <p style="margin:0 0 8px;font-size:20px;font-weight:500;letter-spacing:-0.02em">${esc(opening)}</p>
+    <p style="margin:0 0 24px;color:#666666;font-size:14px">
+      Keep this email. The recovery code below cannot be reissued.
+    </p>
 
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-top:1px solid #111111;border-bottom:1px solid #111111;margin:0 0 20px">
-      <tr>
-        <td style="padding:14px 0;font-size:12px;color:#666666">Group ID</td>
-        <td style="padding:14px 0;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:18px;letter-spacing:0.06em">${esc(linkId)}</td>
-      </tr>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-top:1px solid #111111;border-bottom:1px solid #111111;margin:0 0 24px">
+      ${row("Group code", linkId)}
+      ${row("Recovery code", recoveryCode)}
+      ${row("Your member ID", memberId)}
     </table>
 
-    <p style="margin:0 0 20px;color:#666666;font-size:14px">
-      That ID is how people get in, and it is not recoverable from anywhere else &mdash;
-      we don&rsquo;t list groups by name. Keep this email.
-    </p>
-
-    <p style="margin:0 0 8px"><a href="${joinUrl}" style="color:#111111">Invite link</a> &middot; <span style="color:#666666;font-size:13px">send this to the group</span></p>
-    <p style="margin:0 0 24px"><a href="${adminUrl}" style="color:#111111">Admin view</a> &middot; <span style="color:#666666;font-size:13px">members, markets, what needs resolving</span></p>
-
     <p style="margin:0 0 24px;color:#666666;font-size:14px">
-      Joining takes the ID <em>and</em> the group password. The password isn&rsquo;t in this
-      email and never will be &mdash; pass it along some other way.
+      The recovery code restores this identity &mdash; your points and your stakes &mdash;
+      on another device or after clearing your browser. We store only a hash of it, so
+      nobody can send it to you again, <em>including us</em>.
+      <a href="${recoverUrl}" style="color:#111111">Use it here</a>.
     </p>
 
+    <p style="margin:0 0 6px;font-size:14px">To bring people in, send them this link:</p>
+    <p style="margin:0 0 20px"><a href="${joinUrl}" style="color:#111111;word-break:break-all">${joinUrl}</a></p>
+    <p style="margin:0 0 24px;color:#666666;font-size:14px">
+      &hellip;and the group password, separately. The password isn&rsquo;t in this email
+      and never will be &mdash; it&rsquo;s the whole group&rsquo;s front door.
+    </p>
+${
+  isAdmin
+    ? `    <p style="margin:0 0 24px;font-size:14px">
+      <a href="${adminUrl}" style="color:#111111">Admin view</a>
+      <span style="color:#666666"> &middot; members, markets, what still needs resolving</span>
+    </p>
+`
+    : ""
+}
     <p style="margin:0;padding-top:20px;border-top:1px solid #e5e5e5;color:#666666;font-size:13px">
-      ${esc(adminName)}, you&rsquo;re the admin of ${esc(groupName)}. Points only &mdash; settle your own Venmo beef.
+      ${esc(memberName)} &middot; ${esc(groupName)} &middot; points only, settle your own Venmo beef.
     </p>
   </div>
 </body></html>`;
 
   return {
     to: "",
-    subject: `${groupName} is open — group ID ${linkId}`,
+    subject: isAdmin
+      ? `${groupName} is open — group code ${linkId}`
+      : `You're in ${groupName} — group code ${linkId}`,
     text,
     html,
   };

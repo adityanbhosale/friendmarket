@@ -16,7 +16,7 @@ import {
   DbError,
   dbMessage,
 } from "./db";
-import { looksLikeEmail, registrationMail, sendMail } from "./mail";
+import { looksLikeEmail, membershipMail, sendMail } from "./mail";
 import { hashPassword, verifyPassword } from "./password";
 import { createSession, destroySession, fingerprint } from "./session";
 import { currentMembership, type Group, type User } from "./auth";
@@ -193,14 +193,17 @@ async function createGroupImpl(
   // read to the creator as a failed signup. sendMail already swallows its own
   // failures, so this only guards against something unexpected in composing.
   try {
-    const mail = registrationMail({
+    const mail = membershipMail({
+      role: "admin",
       groupName,
       linkId,
-      adminName: name,
+      memberName: name,
+      memberId: created.user_id,
+      recoveryCode,
     });
     await sendMail({ ...mail, to: email });
   } catch (err) {
-    console.error("[createGroup] registration mail failed", err);
+    console.error("[createGroup] membership mail failed", err);
   }
 
   return { recoveryCode, groupId: linkId };
@@ -234,14 +237,20 @@ async function joinGroupImpl(
   const linkId = normalizeGroupId(formData.get("link_id"));
   const password = String(formData.get("password") ?? "");
   const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const phoneIdentity = derivePhoneIdentity(formData.get("phone"));
   const imessageToken = normalizeImessageSetupToken(formData.get("imessage_token"));
 
   if (formData.has("imessage_token") && !imessageToken) {
     return { error: "That iMessage setup link is invalid or expired." };
   }
-  if (!linkId || !password || !name || !phoneIdentity) {
-    return { error: "Group ID, password, phone number, and name are all required." };
+  if (!linkId || !password || !name || !phoneIdentity || !email) {
+    return {
+      error: "Group ID, password, phone number, name, and email are all required.",
+    };
+  }
+  if (!looksLikeEmail(email)) {
+    return { error: "That email address doesn't look right." };
   }
   if (name.length > 40) {
     return { error: "Name is too long." };
@@ -330,7 +339,33 @@ async function joinGroupImpl(
   }
 
   await createSession(entry.user_id, group.id);
-  if (!entry.created && !entry.recovery_created) redirect("/group");
+
+  // Only on a first entry. A returning member signing in on a new device gets
+  // no new recovery code — there is nothing new to tell them, and mailing the
+  // same credentials again on every sign-in would be noise around the one
+  // message that matters.
+  const firstEntry = entry.created || entry.recovery_created;
+
+  if (firstEntry) {
+    // Never fatal, for the same reason as createGroup: they are already in the
+    // group, and a mail outage must not read as a failed join.
+    try {
+      const mail = membershipMail({
+        role: "member",
+        groupName: group.name,
+        linkId,
+        memberName: name,
+        memberId: entry.user_id,
+        recoveryCode,
+      });
+      await sendMail({ ...mail, to: email });
+    } catch (err) {
+      console.error("[joinGroup] membership mail failed", err);
+    }
+  } else {
+    redirect("/group");
+  }
+
   return { recoveryCode, groupId: linkId };
 }
 
