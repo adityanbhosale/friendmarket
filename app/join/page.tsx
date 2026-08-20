@@ -2,12 +2,18 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Masthead, Shell, SectionLabel } from "../shell";
 import { currentMembership } from "../lib/auth";
+import { welcomePending } from "../lib/session";
 import { GroupCodeForm } from "./group-code-form";
 
 export const metadata: Metadata = { title: "Join a group — Sidebar" };
 
 export default async function JoinPage() {
-  if (await currentMembership()) redirect("/group");
+  // A signed-in visitor who merely comes back here still gets bounced. The one
+  // exception is the submit that just created their membership: that response
+  // has to render the recovery notice before anything redirects past it.
+  if ((await currentMembership()) && !(await welcomePending())) {
+    redirect("/group");
+  }
 
   return (
     <main className="flex-1">

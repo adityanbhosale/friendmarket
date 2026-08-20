@@ -14,7 +14,11 @@ export function CreateGroupForm({ imessageToken }: { imessageToken?: string }) {
   );
 
   if (state.recoveryCode) {
-    return <RecoveryCodeNotice code={state.recoveryCode} groupId={state.groupId} />;
+    return <RecoveryCodeNotice
+        code={state.recoveryCode}
+        groupId={state.groupId}
+        memberId={state.memberId}
+      />;
   }
 
   return (

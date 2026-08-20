@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Masthead, Shell, SectionLabel } from "../../shell";
 import { currentMembership } from "../../lib/auth";
+import { welcomePending } from "../../lib/session";
 import { selectOne } from "../../lib/db";
 import { normalizeGroupCode } from "../../lib/group-code";
 import { JoinForm } from "../join-form";
@@ -18,7 +19,12 @@ export const metadata: Metadata = { title: "Join a group — Sidebar" };
 export default async function JoinByLinkPage({
   params,
 }: PageProps<"/join/[link_id]">) {
-  if (await currentMembership()) redirect("/group");
+  // A signed-in visitor who merely comes back here still gets bounced. The one
+  // exception is the submit that just created their membership: that response
+  // has to render the recovery notice before anything redirects past it.
+  if ((await currentMembership()) && !(await welcomePending())) {
+    redirect("/group");
+  }
   const { link_id: rawLinkId } = await params;
   const link_id = normalizeGroupCode(rawLinkId);
   if (!link_id) redirect("/join");

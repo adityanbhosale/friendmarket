@@ -18,7 +18,13 @@ import {
 } from "./db";
 import { looksLikeEmail, membershipMail, sendMail } from "./mail";
 import { hashPassword, verifyPassword } from "./password";
-import { createSession, destroySession, fingerprint } from "./session";
+import {
+  clearWelcomePending,
+  createSession,
+  destroySession,
+  fingerprint,
+  markWelcomePending,
+} from "./session";
 import { currentMembership, type Group, type User } from "./auth";
 import { STARTING_POINTS } from "./points";
 import { parseLocalDateTime } from "./datetime";
@@ -46,6 +52,8 @@ export type FormState = {
   error?: string;
   recoveryCode?: string;
   groupId?: string;
+  /** The member's own UUID, shown once alongside the recovery code. */
+  memberId?: string;
   imessageLinked?: boolean;
   phoneAttached?: boolean;
 };
@@ -206,7 +214,7 @@ async function createGroupImpl(
     console.error("[createGroup] membership mail failed", err);
   }
 
-  return { recoveryCode, groupId: linkId };
+  return { recoveryCode, groupId: linkId, memberId: created.user_id };
 }
 
 /**
@@ -347,6 +355,11 @@ async function joinGroupImpl(
   const firstEntry = entry.created || entry.recovery_created;
 
   if (firstEntry) {
+    // Defers the join pages' signed-in redirect for this one submit, so the
+    // recovery code reaches a screen instead of being skipped over. Mail
+    // carries it too, but mail fails quietly and this does not.
+    await markWelcomePending();
+
     // Never fatal, for the same reason as createGroup: they are already in the
     // group, and a mail outage must not read as a failed join.
     try {
@@ -366,7 +379,7 @@ async function joinGroupImpl(
     redirect("/group");
   }
 
-  return { recoveryCode, groupId: linkId };
+  return { recoveryCode, groupId: linkId, memberId: entry.user_id };
 }
 
 export async function recoverGroup(
@@ -759,4 +772,15 @@ function isGeneratedCredentialConflict(error: DbError): boolean {
     (error.body.includes("groups_link_id_key") ||
       error.body.includes("users_recovery_code_hash_uniq"))
   );
+}
+
+/**
+ * Ends the welcome interstitial. Clearing the flag needs a Server Function —
+ * a Server Component cannot write cookies — so Continue is a form submit
+ * rather than a link. Harmless where no flag was set, which is the case for
+ * the group's creator: /start never redirected them in the first place.
+ */
+export async function continueToGroup(): Promise<void> {
+  await clearWelcomePending();
+  redirect("/group");
 }
