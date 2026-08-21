@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { currentMembership, type Group } from "../../lib/auth";
 import { selectOne } from "../../lib/db";
-import { getLiveImessageSetup } from "../../lib/imessage-setup";
+import {
+  getCompletedImessageSetup,
+  getLiveImessageSetup,
+} from "../../lib/imessage-setup";
+import { welcomePending } from "../../lib/session";
 import { JoinForm } from "../../join/join-form";
 import { Masthead, SectionLabel, Shell } from "../../shell";
 import { CreateGroupForm } from "../../start/create-form";
@@ -19,51 +23,52 @@ export default async function ImessageSetupPage({
   searchParams: Promise<{ token?: string | string[] }>;
 }) {
   const rawToken = (await searchParams).token;
-  const live = await getLiveImessageSetup(
-    Array.isArray(rawToken) ? rawToken[0] : rawToken,
-  );
+  const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
   const membership = await currentMembership();
+  const live = await getLiveImessageSetup(token);
+  const completed =
+    !live && membership && (await welcomePending())
+      ? await getCompletedImessageSetup(token, {
+          groupId: membership.group.id,
+          userId: membership.user.id,
+        })
+      : null;
+  const setup = live ?? completed;
 
-  if (!live) return <SetupShell title="That setup link is invalid, expired, or already used." />;
+  if (!setup) {
+    return <SetupShell title="That setup link is invalid, expired, or already used." />;
+  }
 
-  const targetGroup = live.setup.group_id
-    ? await selectOne<Group>("groups", { id: `eq.${live.setup.group_id}` })
+  const targetGroup = setup.setup.group_id
+    ? await selectOne<Group>("groups", { id: `eq.${setup.setup.group_id}` })
     : null;
 
   let content: React.ReactNode;
-  if (targetGroup && membership?.group.id === targetGroup.id) {
+  // A completed setup has already created the session and consumed the token.
+  // Keep the same form subtree for this response so useActionState can render
+  // the recovery notice instead of being replaced by the invalid-link shell.
+  if (completed && targetGroup) {
+    content = <JoinForm linkId={targetGroup.link_id} imessageToken={setup.token} />;
+  } else if (completed) {
+    content = <SetupChoices token={setup.token} />;
+  } else if (targetGroup && membership?.group.id === targetGroup.id) {
     content = (
       <LinkCurrentGroupForm
-        token={live.token}
+        token={setup.token}
         groupName={membership.group.name}
       />
     );
   } else if (targetGroup) {
-    content = <JoinForm linkId={targetGroup.link_id} imessageToken={live.token} />;
+    content = <JoinForm linkId={targetGroup.link_id} imessageToken={setup.token} />;
   } else if (membership) {
     content = (
       <LinkCurrentGroupForm
-        token={live.token}
+        token={setup.token}
         groupName={membership.group.name}
       />
     );
   } else {
-    content = (
-      <div className="grid gap-12">
-        <section>
-          <h2 className="mb-5 text-sm font-medium">Open a new Sidebar group</h2>
-          <CreateGroupForm imessageToken={live.token} />
-        </section>
-        <section className="border-t border-rule pt-10">
-          <h2 className="mb-2 text-sm font-medium">Connect an existing group</h2>
-          <p className="measure mb-5 text-sm leading-relaxed text-muted">
-            Enter its group ID and shared password. This creates your member
-            identity and connects this iMessage conversation in one step.
-          </p>
-          <JoinForm imessageToken={live.token} />
-        </section>
-      </div>
-    );
+    content = <SetupChoices token={setup.token} />;
   }
 
   return (
@@ -72,6 +77,25 @@ export default async function ImessageSetupPage({
     >
       {content}
     </SetupShell>
+  );
+}
+
+function SetupChoices({ token }: { token: string }) {
+  return (
+    <div className="grid gap-12">
+      <section>
+        <h2 className="mb-5 text-sm font-medium">Open a new Sidebar group</h2>
+        <CreateGroupForm imessageToken={token} />
+      </section>
+      <section className="border-t border-rule pt-10">
+        <h2 className="mb-2 text-sm font-medium">Connect an existing group</h2>
+        <p className="measure mb-5 text-sm leading-relaxed text-muted">
+          Enter its group ID and shared password. This creates your member
+          identity and connects this iMessage conversation in one step.
+        </p>
+        <JoinForm imessageToken={token} />
+      </section>
+    </div>
   );
 }
 

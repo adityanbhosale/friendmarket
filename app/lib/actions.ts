@@ -195,6 +195,10 @@ async function createGroupImpl(
     return { error: "Couldn't allocate a group ID. Try again." };
   }
 
+  // Consuming an iMessage token makes the current setup URL look invalid on
+  // the cookie-triggered Server Action re-render. Hold that one response open
+  // long enough for the recovery notice to render, just as first-time joins do.
+  if (imessageToken) await markWelcomePending();
   await createSession(created.user_id, created.group_id);
 
   // Last, and never fatal. The group exists either way; a mail outage must not
