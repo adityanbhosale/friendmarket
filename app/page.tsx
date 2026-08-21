@@ -109,18 +109,94 @@ function StaggeredWords({ text }: { text: string }) {
   );
 }
 
+// Shown as a running tape under the headline. House style is a blank rather
+// than a name — these render on a public page, and "Will [_____]" is a joke
+// about a type of friend, where a real name would be a joke about a person.
+const TAPE = [
+  { q: "Will [_____] text their ex before 2am?", p: 71 },
+  { q: "Does anyone actually make it to the 8:30am?", p: 12 },
+  { q: "Will [_____] change their major again this semester?", p: 44 },
+  { q: "Does the Venmo request get paid inside a week?", p: 23 },
+  { q: "Will [_____] say 'never drinking again' before Sunday?", p: 88 },
+  { q: "Does the group chat survive the trip?", p: 61 },
+  { q: "Will [_____] lose their ID for the third time?", p: 37 },
+  { q: "Does the thing in the back of the fridge get thrown out this month?", p: 9 },
+  { q: "Will the 'one quiet drink' end after 1am?", p: 79 },
+  { q: "Does [_____] make it to the gym three days running?", p: 18 },
+  { q: "Will someone cry at the formal?", p: 66 },
+  { q: "Does anyone remember to cancel the free trial?", p: 14 },
+  { q: "Will [_____] show up to lecture in yesterday's clothes?", p: 52 },
+  { q: "Does the group study session involve any studying?", p: 21 },
+  { q: "Will [_____] reply 'omw' while still in bed?", p: 93 },
+  { q: "Does the roommate thermostat war reach a truce?", p: 27 },
+];
+
+/**
+ * A tape of example markets. Not live and not pretending to be — the point is
+ * to show what a question looks like here, in the tone people actually write
+ * them in, before anyone has to imagine one themselves.
+ *
+ * The list renders twice: the animation slides the track exactly half its
+ * width, so the copy arrives precisely where the original started and the loop
+ * has no visible seam. The second copy is decorative, so it is hidden from
+ * assistive tech rather than read out again.
+ */
+function MarketTape() {
+  return (
+    <div className="ticker border-y border-rule select-none">
+      <div className="ticker-track">
+        <TapeRun />
+        <TapeRun ariaHidden />
+      </div>
+    </div>
+  );
+}
+
+function TapeRun({ ariaHidden = false }: { ariaHidden?: boolean }) {
+  return (
+    <ul
+      className="flex shrink-0"
+      aria-hidden={ariaHidden || undefined}
+      aria-label={ariaHidden ? undefined : "Example markets"}
+    >
+      {TAPE.map(({ q, p }, i) => (
+        <li
+          key={`${q}-${i}`}
+          className="flex shrink-0 items-baseline gap-3 border-r border-rule px-6 py-3.5"
+        >
+          <span className="font-mono text-xs text-muted tabular-nums">
+            {String(p).padStart(2, "0")}%
+          </span>
+          <span className="text-sm whitespace-nowrap">{q}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Hero() {
   return (
     <section className="border-b border-rule">
       <div className="broadsheet-full">
-        <div className="py-24 sm:py-32 lg:py-40">
+        <div className="pt-20 sm:pt-24 lg:pt-28">
           <h1 className="type-hero text-balance">
             <StaggeredWords text={HEADLINE} />
           </h1>
+        </div>
+      </div>
 
+      {/* Runs edge to edge, so it sits outside the gutters the rest of the
+          page keeps. Trimmed the hero's padding to pay for the height rather
+          than pushing the buttons off the first screen. */}
+      <div className="mt-14">
+        <MarketTape />
+      </div>
+
+      <div className="broadsheet-full">
+        <div className="pt-12 pb-20 sm:pb-24 lg:pb-28">
           {/* Two doors, and the copy names the situation the visitor is
               actually in rather than the record we are about to write. */}
-          <div className="mt-14 flex flex-col gap-x-14 gap-y-10 lg:flex-row lg:items-start">
+          <div className="flex flex-col gap-x-14 gap-y-10 lg:flex-row lg:items-start">
             <div>
               <Link
                 href="/start"

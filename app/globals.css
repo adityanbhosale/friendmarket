@@ -155,3 +155,55 @@ body {
     transform: none;
   }
 }
+
+/* Ticker tape. The track holds the list twice and slides exactly half its own
+   width, so the second copy lands where the first began and the loop has no
+   seam. Pure CSS — no measuring, no JS, and it runs before hydration. */
+.ticker {
+  overflow: hidden;
+  /* Fades the tape into the page edges instead of guillotining it. */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 5rem,
+    #000 calc(100% - 5rem),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 5rem,
+    #000 calc(100% - 5rem),
+    transparent
+  );
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-slide 70s linear infinite;
+}
+
+/* Stops under the cursor so a question you want to read stays readable. */
+.ticker:hover .ticker-track,
+.ticker:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-slide {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No drift at all; the tape becomes an ordinary thing you can push. */
+  .ticker {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .ticker-track {
+    animation: none;
+  }
+}
