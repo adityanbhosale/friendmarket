@@ -48,7 +48,7 @@ export default async function JoinByLinkPage({
             <p className="measure mt-5 leading-relaxed text-muted">
               {remembered
                 ? "Confirm your registered phone number and the shared group password."
-                : "Enter your phone number, name, email, and the shared group password. Returning phone identities reopen the same member UUID."}
+                : "Enter your phone number, name, and the shared group password. Add an email if you want the group code sent to your inbox. Returning phone identities reopen the same member UUID."}
             </p>
           </div>
 
