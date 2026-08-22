@@ -235,6 +235,29 @@ test("keeps group creation distinct from market creation", async () => {
   assert.equal(modeledWrong.source, "deterministic");
 });
 
+test("answers test and status checks without guessing at a market action", async () => {
+  assert.equal(
+    parseDeterministicIntent("sidebar test").action,
+    "health_check",
+  );
+  assert.equal(
+    parseDeterministicIntent("sidebar are you working?").action,
+    "health_check",
+  );
+
+  const modeledWrong = await parseNaturalLanguageIntent({
+    text: "sidebar test",
+    apiKey: "test-key",
+    fetchImpl: async () => modelResponse({
+      action: "chat",
+      replyMessages: ["lol fair"],
+      confidence: 0.99,
+    }),
+  });
+  assert.equal(modeledWrong.action, "health_check");
+  assert.equal(modeledWrong.source, "deterministic");
+});
+
 test("treats addressed banter as chat instead of an incomplete market command", async () => {
   const result = await parseNaturalLanguageIntent({
     text: "sidebar the public hates you can you lock in",
@@ -260,7 +283,7 @@ test("downgrades an ungrounded model guess before it can become an app action", 
     }),
   });
   assert.equal(result.action, "chat");
-  assert.deepEqual(result.replyMessages, ["lol fair", "what's up?"]);
+  assert.deepEqual(result.replyMessages, ["what's up?"]);
 });
 
 test("uses strict structured output for ambiguous invoked language", async () => {
@@ -329,7 +352,7 @@ test("keeps casual addressed text out of market parsing without an API key", asy
     apiKey: "",
   });
   assert.equal(result.action, "chat");
-  assert.deepEqual(result.replyMessages, ["lol fair", "what's up?"]);
+  assert.deepEqual(result.replyMessages, ["what's up?"]);
 });
 
 test("uses the LLM first for every invoked command when a key is configured", async () => {

@@ -383,6 +383,16 @@ test("returns social replies without attempting a market action", async () => {
   assert.deepEqual(result, ["damn 😭", "i'm locked in"]);
 });
 
+test("answers a health check in short useful bubbles", async () => {
+  const result = await executeIntent({
+    client: {},
+    intent: { action: "health_check" },
+    binding: { groupId: GROUP_ID, userId: USER_ID },
+    now: NOW,
+  });
+  assert.deepEqual(result, ["all good here", "what's up?"]);
+});
+
 test("formats final payouts after deterministic resolution", async () => {
   const result = await executeIntent({
     client: {

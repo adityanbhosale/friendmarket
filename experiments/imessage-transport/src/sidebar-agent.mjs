@@ -114,6 +114,8 @@ export async function executeIntent({
         "try: sidebar make a market on whether dan is late tonight",
         "i'll ask for anything missing",
       ].join("\n");
+    case "health_check":
+      return ["all good here", "what's up?"];
     case "group_request": {
       const group = typeof client.getGroup === "function"
         ? await client.getGroup(binding.groupId)
@@ -128,7 +130,7 @@ export async function executeIntent({
     case "chat":
       return Array.isArray(intent.replyMessages) && intent.replyMessages.length
         ? intent.replyMessages.slice(0, 3)
-        : ["lol", "what's up?"];
+        : ["what's up?"];
     case "list_markets":
       return formatMarketList(marketRows, now);
     case "show_market": {

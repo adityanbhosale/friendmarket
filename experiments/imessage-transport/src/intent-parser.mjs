@@ -13,6 +13,7 @@ const ACTIONS = new Set([
   "leave_market",
   "place_bet",
   "resolve_market",
+  "health_check",
   "group_request",
   "chat",
   "unknown",
@@ -32,6 +33,14 @@ export function parseDeterministicIntent(text, { now = new Date(), markets = [] 
 
   if (/^(?:start|help|commands|what can you do)\??$/i.test(request)) {
     return intent("help");
+  }
+
+  if (
+    /^(?:test|ping|status|working|online|you there|are you (?:there|working|online)|(?:is )?(?:everything|all) (?:good|working))\s*[.!?]*$/i.test(
+      request,
+    )
+  ) {
+    return intent("health_check");
   }
 
   const groupRequest = parseGroupRequest(request);
@@ -149,7 +158,9 @@ export async function parseNaturalLanguageIntent({
     const request = stripBotPrefix(text).trim();
     // Group and market are different product objects. A clear group request
     // must never be promoted into a market mutation, even if the model errs.
-    if (deterministic?.action === "group_request") return deterministic;
+    if (new Set(["group_request", "health_check"]).has(deterministic?.action)) {
+      return deterministic;
+    }
     // An addressed joke cannot become a half-filled market action. Pending
     // drafts and fully grounded commands still pass through normally.
     if (
@@ -251,7 +262,7 @@ function hasProductRequestSignal(request) {
 }
 
 function fallbackChat() {
-  return intent("chat", { replyMessages: ["lol fair", "what's up?"] });
+  return intent("chat", { replyMessages: ["what's up?"] });
 }
 
 function parseBet(request, markets) {
@@ -538,6 +549,7 @@ function buildSystemPrompt({ now, timezone, markets, pendingMarketDraft }) {
     "Classify one message addressed to Sidebar, and extract an app action only when the user actually requests one.",
     "Do not execute anything and do not invent IDs, amounts, outcomes, or times.",
     "Use chat for jokes, insults, encouragement, banter, reactions, or anything that does not ask to read or change Sidebar state. Idioms such as lock in, bet, odds, or stake are not app commands without actual market context.",
+    "Use health_check for test, ping, status, are you working, are you there, or similar checks that Sidebar is responding.",
     "Use group_request when the user asks to create, make, name, rename, title, or open a group or group chat. A native iMessage chat maps to one Sidebar group, so never reinterpret a group request as create_market. Copy an explicitly requested name into requestedGroupName.",
     "For clear market creation intent, always return create_market even when fields are missing. Leave missing fields null so the app can ask one follow-up at a time.",
     "If a pending market draft is shown, treat the user's message as a possible answer to its missing field and merge only information the user actually supplied.",
