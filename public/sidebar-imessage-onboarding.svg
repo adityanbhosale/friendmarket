@@ -20,7 +20,7 @@
     <rect x="102" y="534" width="824" height="214" rx="46" fill="#3a3a3c"/>
     <path d="M112 704c-10 25-23 36-39 43 27 2 48-3 62-16z" fill="#3a3a3c"/>
     <text x="146" y="602" fill="#fff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="32">
-      <tspan x="146" dy="0">You're all set for Monkey Business.</tspan>
+      <tspan x="146" dy="0">You're all set!</tspan>
       <tspan x="146" dy="48">Add me to the iMessage group chat,</tspan>
       <tspan x="146" dy="48">then send “@sidebar help” there.</tspan>
     </text>
