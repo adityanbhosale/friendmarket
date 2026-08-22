@@ -80,7 +80,7 @@ export default function Home() {
 }
 
 const HEADLINE =
-  "Private prediction markets on the bets your group chat was already talking about.";
+  "Prediction markets on the sh*t your groupchat is already talking about.";
 
 /**
  * Renders a sentence one word per element so each can be delayed in reading
