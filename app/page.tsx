@@ -205,6 +205,8 @@ const SCHOOLS = [
   { name: "Purdue University", src: "/logos/purdue-p.svg", w: 46, h: 25 },
   { name: "Stanford University", src: "/logos/stanford.svg", w: 25, h: 38 },
   { name: "Yale University", src: "/logos/yale.svg", w: 38, h: 40 },
+  { name: "University of Michigan", src: "/logos/michigan.svg", w: 42, h: 30 },
+  { name: "University of California, Berkeley", src: "/logos/berkeley.svg", w: 35, h: 28 },
 ];
 
 const NYU_VIOLET = "#57068C";
@@ -216,12 +218,12 @@ const NYU_VIOLET = "#57068C";
  * an ultrawide display; the images are one cached file each, so the cost is
  * DOM nodes rather than bytes.
  */
-const RUNS = 10;
+const RUNS = 8;
 
 function LaunchBar() {
   return (
     <div className="ticker border-b border-rule">
-      <div className="ticker-track" style={{ animationDuration: "38s" }}>
+      <div className="ticker-track" style={{ animationDuration: "58s" }}>
         {Array.from({ length: RUNS }, (_, i) => (
           <SchoolRun key={i} ariaHidden={i > 0} />
         ))}
