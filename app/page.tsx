@@ -202,10 +202,10 @@ function Hero() {
                 href="/start"
                 className="inline-flex h-12 items-center bg-foreground px-7 text-base text-background transition-opacity hover:opacity-80"
               >
-                Start a group
+                Start your group chat
               </Link>
               <p className="mt-3 text-sm text-muted">
-                Free, takes a minute. Invite the chat after.
+                Takes a minute. Then invite your friends.
               </p>
             </div>
 
@@ -578,7 +578,7 @@ function ClosingCTA() {
               href="/start"
               className="inline-flex h-12 items-center bg-foreground px-7 text-base text-background transition-opacity hover:opacity-80"
             >
-              Start a group
+              Start your group chat
             </Link>
             <Link
               href="/join"
