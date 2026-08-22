@@ -69,6 +69,7 @@ export default function Home() {
   return (
     <main className="flex-1">
       <Masthead />
+      <LaunchBar />
       <Hero />
       <MarketSection />
       <HowItWorks />
@@ -175,43 +176,78 @@ function TapeRun({ ariaHidden = false }: { ariaHidden?: boolean }) {
 }
 
 /**
- * Where it is opening. Sits above the headline as a small line of standing
- * type, the way a masthead carries a dateline.
+ * A standing bar directly under the masthead, the way a paper runs a strip of
+ * standing type above the fold.
  *
- * Official wordmarks in their own brand colours — the one place on the site
- * that is not black and white, because a university's mark in the wrong
- * colour stops being that university's mark.
+ * Each school is its own mark rather than a wordmark: Penn's shield, NYU's
+ * torch with the letters set beneath it, Purdue's P. They keep their brand
+ * colours — the one place on the site that is not black and white, because a
+ * shield in the wrong colour is not that school's shield.
  *
- * NYU shipped with pixel dimensions and no viewBox, which was added so it
- * scales to the height set here instead of locking to 350px.
- *
- * The three lock-ups have very different proportions (Penn is stacked at
- * roughly 2:1, NYU is a single line at nearly 6:1), so heights are set per
- * mark rather than uniformly. A single shared height makes NYU tower and
- * Penn shrink to nothing.
+ * NYU's is assembled here rather than shipped whole. The file published as
+ * the NYU logo is the torch block and "NEW YORK UNIVERSITY" side by side in a
+ * single path, so the viewBox is cropped to the block and the letters are set
+ * underneath in the page's own type.
  */
 const SCHOOLS = [
-  { name: "Penn", src: "/logos/penn.svg", w: 55, h: 26 },
-  { name: "New York University", src: "/logos/nyu.svg", w: 80, h: 14 },
-  { name: "Purdue University", src: "/logos/purdue.svg", w: 56, h: 18 },
+  { name: "University of Pennsylvania", src: "/logos/penn-shield.svg", w: 21, h: 24 },
+  { name: "Purdue University", src: "/logos/purdue-p.svg", w: 32, h: 17 },
 ];
 
-function LaunchingAt() {
+const NYU_VIOLET = "#57068C";
+
+function LaunchBar() {
   return (
-    <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
-      <span className="text-sm text-muted">Launching at</span>
-      {SCHOOLS.map(({ name, src, w, h }) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={name}
-          src={src}
-          alt={name}
-          width={w}
-          height={h}
-          style={{ height: h, width: w }}
-          className="shrink-0"
-        />
-      ))}
+    <div className="border-b border-rule">
+      <div className="broadsheet-full">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2.5">
+          <span className="text-sm text-muted italic">Launching at</span>
+
+          {/* Penn */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={SCHOOLS[0].src}
+            alt={SCHOOLS[0].name}
+            width={SCHOOLS[0].w}
+            height={SCHOOLS[0].h}
+            style={{ width: SCHOOLS[0].w, height: SCHOOLS[0].h }}
+            className="shrink-0"
+          />
+
+          {/* NYU: torch over letters, treated as one mark by assistive tech. */}
+          <span
+            role="img"
+            aria-label="New York University"
+            className="flex shrink-0 flex-col items-center leading-none"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/nyu-torch.svg"
+              alt=""
+              width={18}
+              height={18}
+              style={{ width: 18, height: 18 }}
+            />
+            <span
+              className="mt-[3px] text-[8px] font-bold tracking-[0.06em]"
+              style={{ color: NYU_VIOLET }}
+            >
+              NYU
+            </span>
+          </span>
+
+          {/* Purdue */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={SCHOOLS[1].src}
+            alt={SCHOOLS[1].name}
+            width={SCHOOLS[1].w}
+            height={SCHOOLS[1].h}
+            style={{ width: SCHOOLS[1].w, height: SCHOOLS[1].h }}
+            className="shrink-0"
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -221,10 +257,6 @@ function Hero() {
     <section className="border-b border-rule">
       <div className="broadsheet-full">
         <div className="pt-20 sm:pt-24 lg:pt-28">
-          <div className="mb-7">
-            <LaunchingAt />
-          </div>
-
           <h1 className="type-hero text-balance">
             <StaggeredWords text={HEADLINE} />
           </h1>
