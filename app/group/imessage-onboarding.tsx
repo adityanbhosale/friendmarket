@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import {
+  formatSidebarImessageNumber,
+  sidebarSmsHref,
+} from "../lib/imessage-number";
 
 export function ImessageOnboarding({
   groupCode,
   sidebarNumber,
 }: {
   groupCode: string;
-  sidebarNumber: string | null;
+  sidebarNumber: string;
 }) {
   const [status, setStatus] = useState("");
   const command = `@sidebar start ${groupCode}`;
@@ -20,9 +24,7 @@ export function ImessageOnboarding({
       setStatus("Copy the command shown above, then paste it into Messages.");
     }
 
-    if (sidebarNumber) {
-      window.location.assign(`sms:${sidebarNumber}`);
-    }
+    window.location.assign(sidebarSmsHref(sidebarNumber));
   }
 
   return (
@@ -34,7 +36,8 @@ export function ImessageOnboarding({
       <ol className="mt-5 grid gap-3 text-sm leading-relaxed text-muted">
         <li>
           <span className="mr-2 font-mono text-foreground">01</span>
-          Message Sidebar this command from your registered phone number.
+          Message Sidebar at {formatSidebarImessageNumber(sidebarNumber)} this
+          command from your registered phone number.
         </li>
         <li>
           <span className="mr-2 font-mono text-foreground">02</span>
@@ -55,13 +58,8 @@ export function ImessageOnboarding({
         onClick={openMessages}
         className="mt-4 h-11 bg-foreground px-5 text-sm text-background transition-opacity hover:opacity-80"
       >
-        {sidebarNumber ? "Copy command & open Messages →" : "Copy command"}
+        Copy command & open Messages →
       </button>
-      {!sidebarNumber && (
-        <p className="mt-3 text-xs leading-relaxed text-muted">
-          The Sidebar iMessage number has not been configured on this deployment yet.
-        </p>
-      )}
       <p role="status" aria-live="polite" className="mt-3 min-h-5 text-xs text-muted">
         {status}
       </p>

@@ -11,6 +11,7 @@ import {
   STATE_LABEL,
 } from "../lib/market-data";
 import { signOut } from "../lib/actions";
+import { sidebarImessageNumber } from "../lib/imessage-number";
 import { RecoveryCodeForm } from "./recovery-code-form";
 import { PhoneIdentityForm } from "./phone-identity-form";
 import { ImessageOnboarding } from "./imessage-onboarding";
@@ -31,7 +32,9 @@ export default async function GroupPage() {
   ]);
   const joinedMarkets = markets.filter((market) => market.joined);
   const availableMarkets = markets.filter((market) => !market.joined);
-  const sidebarNumber = normalizeSidebarNumber(process.env.SIDEBAR_IMESSAGE_NUMBER);
+  const sidebarNumber = sidebarImessageNumber(
+    process.env.SIDEBAR_IMESSAGE_NUMBER,
+  );
 
   return (
     <main className="flex-1">
@@ -136,12 +139,6 @@ export default async function GroupPage() {
       </Shell>
     </main>
   );
-}
-
-function normalizeSidebarNumber(value: string | undefined): string | null {
-  const trimmed = value?.trim();
-  if (!trimmed || !/^\+\d{8,15}$/.test(trimmed)) return null;
-  return trimmed;
 }
 
 function MarketSection({
