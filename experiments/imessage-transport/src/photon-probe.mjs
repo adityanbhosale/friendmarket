@@ -138,7 +138,7 @@ async function runWatcher(sdk, selfTest) {
   });
 
   process.stdout.write(
-    `${JSON.stringify({ status: "watching", dryRun, trigger: "@sidebar|test-tag" })}\n`,
+    `${JSON.stringify({ status: "watching", dryRun, trigger: "sidebar|test-tag" })}\n`,
   );
 
   const stopSelfPolling = selfTest

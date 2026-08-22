@@ -8,10 +8,11 @@ import {
 } from "../src/intent-parser.mjs";
 
 test("invokes only messages that begin by naming Sidebar", () => {
-  assert.equal(isAgentInvocation("sidebar what are the odds on market 2?"), false);
+  assert.equal(isAgentInvocation("sidebar what are the odds on market 2?"), true);
+  assert.equal(isAgentInvocation("Sidebar, show markets"), true);
+  // Older beta commands remain valid, but the @ is no longer required.
   assert.equal(isAgentInvocation("@Sidebar, put 40 on yes in market 3"), true);
   assert.equal(isAgentInvocation("hey sidebar: show markets"), false);
-  assert.equal(isAgentInvocation("Sidebar, show markets"), false);
   assert.equal(isAgentInvocation("please @sidebar show markets"), false);
   assert.equal(isAgentInvocation("put 40 on yes in market 3"), false);
   assert.equal(isAgentInvocation("what are the odds on market 2?"), false);
@@ -35,6 +36,8 @@ test("parses natural bet and market query phrases without an LLM", () => {
       resolveAt: null,
       subjectName: null,
       subjectPhone: null,
+      requestedGroupName: null,
+      replyMessages: [],
       confidence: 1,
       clarification: null,
       source: "deterministic",
@@ -97,6 +100,8 @@ test("matches join and leave commands by question instead of requiring a number"
       resolveAt: null,
       subjectName: null,
       subjectPhone: null,
+      requestedGroupName: null,
+      replyMessages: [],
       confidence: 1,
       clarification: null,
       source: "deterministic",
@@ -121,6 +126,8 @@ test("parses a final-payout request as a market detail read", () => {
     resolveAt: null,
     subjectName: null,
     subjectPhone: null,
+    requestedGroupName: null,
+    replyMessages: [],
     confidence: 1,
     clarification: null,
     source: "deterministic",
@@ -168,6 +175,8 @@ test("parses the prompted person-market follow-up without an LLM", () => {
       resolveAt: null,
       subjectName: "Dan",
       subjectPhone: "+1 (212) 555-0199",
+      requestedGroupName: null,
+      replyMessages: [],
       confidence: 1,
       clarification: null,
       source: "deterministic",
@@ -206,6 +215,54 @@ test("does not call OpenAI for an unprefixed market instruction", async () => {
   assert.equal(called, false);
 });
 
+test("keeps group creation distinct from market creation", async () => {
+  const deterministic = parseDeterministicIntent(
+    "sidebar make a group titled monkey business",
+  );
+  assert.equal(deterministic.action, "group_request");
+  assert.equal(deterministic.requestedGroupName, "monkey business");
+
+  const modeledWrong = await parseNaturalLanguageIntent({
+    text: "sidebar make a group titled monkey business",
+    apiKey: "test-key",
+    fetchImpl: async () => modelResponse({
+      action: "create_market",
+      question: "monkey business",
+      confidence: 0.99,
+    }),
+  });
+  assert.equal(modeledWrong.action, "group_request");
+  assert.equal(modeledWrong.source, "deterministic");
+});
+
+test("treats addressed banter as chat instead of an incomplete market command", async () => {
+  const result = await parseNaturalLanguageIntent({
+    text: "sidebar the public hates you can you lock in",
+    apiKey: "test-key",
+    fetchImpl: async () => modelResponse({
+      action: "chat",
+      replyMessages: ["Damn 😭", "I'm locked in"],
+      confidence: 0.99,
+    }),
+  });
+  assert.equal(result.action, "chat");
+  assert.deepEqual(result.replyMessages, ["damn 😭", "i'm locked in"]);
+});
+
+test("downgrades an ungrounded model guess before it can become an app action", async () => {
+  const result = await parseNaturalLanguageIntent({
+    text: "sidebar lock in bro",
+    apiKey: "test-key",
+    fetchImpl: async () => modelResponse({
+      action: "place_bet",
+      clarification: "Which market number and side?",
+      confidence: 0.99,
+    }),
+  });
+  assert.equal(result.action, "chat");
+  assert.deepEqual(result.replyMessages, ["lol fair", "what's up?"]);
+});
+
 test("uses strict structured output for ambiguous invoked language", async () => {
   let requestBody;
   const result = await parseNaturalLanguageIntent({
@@ -233,6 +290,8 @@ test("uses strict structured output for ambiguous invoked language", async () =>
                     resolveAt: null,
                     subjectName: null,
                     subjectPhone: null,
+                    requestedGroupName: null,
+                    replyMessages: [],
                     confidence: 0.98,
                     clarification: null,
                   }),
@@ -262,6 +321,15 @@ test("returns a short clarification when OpenAI is not configured", async () => 
   });
   assert.equal(result.action, "unknown");
   assert.equal(result.clarification, "i didn't get that — try saying it another way");
+});
+
+test("keeps casual addressed text out of market parsing without an API key", async () => {
+  const result = await parseNaturalLanguageIntent({
+    text: "sidebar the public hates you can you lock in",
+    apiKey: "",
+  });
+  assert.equal(result.action, "chat");
+  assert.deepEqual(result.replyMessages, ["lol fair", "what's up?"]);
 });
 
 test("uses the LLM first for every invoked command when a key is configured", async () => {
@@ -326,6 +394,8 @@ function modelResponse(overrides) {
     resolveAt: null,
     subjectName: null,
     subjectPhone: null,
+    requestedGroupName: null,
+    replyMessages: [],
     confidence: 0.9,
     clarification: null,
     ...overrides,

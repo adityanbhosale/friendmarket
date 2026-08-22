@@ -23,6 +23,24 @@ test("Sidebar client sends the service key only in request headers", async () =>
   assert.equal(requests[0].url.includes("secret-test-key"), false);
 });
 
+test("loads the bound Sidebar group for group-aware replies", async () => {
+  let requestedUrl;
+  const client = createSidebarClient({
+    url: "https://example.supabase.co",
+    key: "test-key",
+    fetchImpl: async (url) => {
+      requestedUrl = url;
+      return json([{ id: "group-1", name: "Monkey Business" }]);
+    },
+  });
+  assert.deepEqual(await client.getGroup("group-1"), {
+    id: "group-1",
+    name: "Monkey Business",
+  });
+  assert.match(requestedUrl, /\/groups\?/);
+  assert.equal(new URL(requestedUrl).searchParams.get("id"), "eq.group-1");
+});
+
 test("resolves persistent conversation and sender bindings", async () => {
   const responses = [
     [{ conversation_hash: "c".repeat(64), group_id: "group-1" }],

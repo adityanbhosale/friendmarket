@@ -95,11 +95,11 @@ Then start with no writes:
 npm run watch:self:dry
 ```
 
-Send `@sidebar G1-SELF-01 ping` from the same iMessage account. Once it is
+Send `sidebar G1-SELF-01 ping` from the same iMessage account. Once it is
 recorded as `would_reply`, run `npm run watch:self` and send
-`@sidebar G1-SELF-02 ping`; the exact group should receive `ACK G1-SELF-02`.
-Only messages beginning with `@sidebar` in that exact conversation are adapted;
-all other from-me traffic remains ignored. Replies do not begin with `@sidebar`,
+`sidebar G1-SELF-02 ping`; the exact group should receive `ACK G1-SELF-02`.
+Only messages beginning with `sidebar` in that exact conversation are adapted;
+all other from-me traffic remains ignored. Replies do not begin with `sidebar`,
 and generated `ACK` messages are rejected explicitly, so they cannot recursively
 invoke the watcher. A separate circuit breaker also blocks identical replies
 within ten seconds and caps total replies per minute. Never enable this mode on
@@ -152,7 +152,7 @@ from the native chat: everyone can view, but only joined members can bet. Each n
 a randomly selected current group member as adjudicator, preferring someone
 other than the proposer when possible.
 
-### 1. Create or connect with `@sidebar, start`
+### 1. Create or connect with `sidebar start`
 
 After migration `010_optional_imessage_links.sql` is applied, configure these
 values only in the root `.env.local`:
@@ -171,7 +171,7 @@ Keep the secret stable: it creates non-reversible, keyed hashes for native
 conversation and sender identifiers. Raw phone numbers and chat IDs are never
 stored in Supabase.
 
-An unconnected participant sends `@sidebar, start`. The bot acknowledges in the
+An unconnected participant sends `sidebar start`. The bot acknowledges in the
 group and sends that participant a direct iMessage containing a single-use
 browser link that expires after 15 minutes. The link is never posted to the
 shared group. The page then:
@@ -214,12 +214,12 @@ responses identify the intended group and user.
 Common phrasing is parsed locally and costs nothing:
 
 ```text
-@sidebar, show markets
-@sidebar, what are the odds on market 3?
-@sidebar, join Dan being late
-@sidebar, put 40 points on Dan being late
-@sidebar, create a market: Will Dan be late? closes in 2 hours
-@sidebar, resolve Dan being late as yes
+sidebar show markets
+sidebar what are the odds on market 3?
+sidebar join Dan being late
+sidebar put 40 points on Dan being late
+sidebar create a market: Will Dan be late? closes in 2 hours
+sidebar resolve Dan being late as yes
 ```
 
 For person markets, Sidebar asks for the subject's name and phone number when
@@ -227,12 +227,13 @@ either is missing. The agent hashes the phone immediately; the database stores
 only that keyed hash and prevents the matching subject from joining or betting
 while leaving the market visible to them.
 
-Every request must begin with `@sidebar`. Even an
+Every request must begin with `sidebar`. The older `@sidebar` form still works
+for compatibility. Even an
 otherwise clear market instruction is ignored without that prefix, so ordinary
 group conversation cannot accidentally invoke parsing, an API call, or a
 database action.
 
-When `OPENAI_API_KEY` is configured, every explicit `@sidebar` command goes to
+When `OPENAI_API_KEY` is configured, every explicit `sidebar` request goes to
 the OpenAI intent parser first. Ordinary group chatter is still discarded
 before any API call. The model returns a strict structured intent; application
 validation and Supabase RPCs remain the authority for every mutation. If the

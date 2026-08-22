@@ -77,7 +77,8 @@ test("limits live evidence collection to explicitly tagged test traffic", () => 
   assert.equal(isTaggedTestTraffic("where are we meeting?"), false);
   assert.equal(isTaggedTestTraffic("ordinary chatter G1-N-01"), true);
   assert.equal(isTaggedTestTraffic("@sidebar G1-A-01 ping"), true);
-  assert.equal(isTaggedTestTraffic("sidebar show markets"), false);
+  assert.equal(isTaggedTestTraffic("sidebar show markets"), true);
+  assert.equal(isTaggedTestTraffic("hey sidebar show markets"), false);
 });
 
 test("deduplicates events and always replies to the received conversation", async () => {

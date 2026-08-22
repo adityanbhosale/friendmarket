@@ -13,7 +13,7 @@
   <g>
     <rect x="394" y="344" width="704" height="116" rx="46" fill="#0a84ff"/>
     <path d="M1088 424c10 25 23 36 39 43-27 2-48-3-62-16z" fill="#0a84ff"/>
-    <text x="434" y="415" fill="#fff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="34">@sidebar start K7QM-3XPD</text>
+    <text x="434" y="415" fill="#fff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="34">sidebar start K7QM-3XPD</text>
   </g>
 
   <g>
@@ -22,7 +22,7 @@
     <text x="146" y="602" fill="#fff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="32">
       <tspan x="146" dy="0">You're all set!</tspan>
       <tspan x="146" dy="48">Add me to the iMessage group chat,</tspan>
-      <tspan x="146" dy="48">then send “@sidebar help” there.</tspan>
+      <tspan x="146" dy="48">then send “sidebar help” there.</tspan>
     </text>
   </g>
 

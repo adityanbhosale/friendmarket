@@ -8,10 +8,17 @@ import {
 } from "../src/reply-sequence.mjs";
 
 test("turns compact newline replies into separate iMessage bubbles", () => {
-  assert.deepEqual(replyMessages("got it\n40 on yes\nnew odds: 60/40"), [
+  assert.deepEqual(replyMessages("Got it\n40 on YES\nNew odds: 60/40"), [
     "got it",
     "40 on yes",
     "new odds: 60/40",
+  ]);
+});
+
+test("normalizes array replies into lowercase chat bubbles", () => {
+  assert.deepEqual(replyMessages(["Damn 😭", "I'm locked in"]), [
+    "damn 😭",
+    "i'm locked in",
   ]);
 });
 

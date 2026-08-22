@@ -78,6 +78,10 @@ export function createSidebarClient({
     return membership;
   }
 
+  async function getGroup(groupId) {
+    return selectOne("groups", { id: `eq.${groupId}` });
+  }
+
   async function listGroupsForPhone(phoneHash) {
     const memberships = await select("group_members", {
       phone_hash: `eq.${phoneHash}`,
@@ -380,6 +384,7 @@ export function createSidebarClient({
     completeMarketDraft,
     claimImessageWebLink,
     getMarketByNumber,
+    getGroup,
     joinMarket,
     leaveMarket,
     listGroupsForPhone,
