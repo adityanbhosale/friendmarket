@@ -176,79 +176,100 @@ function TapeRun({ ariaHidden = false }: { ariaHidden?: boolean }) {
 }
 
 /**
- * A standing bar directly under the masthead, the way a paper runs a strip of
- * standing type above the fold.
+ * A standing bar of school marks under the masthead, running continuously.
  *
- * Each school is its own mark rather than a wordmark: Penn's shield, NYU's
- * torch with the letters set beneath it, Purdue's P. They keep their brand
- * colours — the one place on the site that is not black and white, because a
- * shield in the wrong colour is not that school's shield.
+ * Each school appears as its own mark rather than a wordmark: Penn's shield,
+ * NYU's torch over the letters, Purdue's P, Stanford's tree, Yale's shield.
+ * They keep their brand colours — a shield in the wrong colour is not that
+ * school's shield.
  *
- * NYU's is assembled here rather than shipped whole. The file published as
- * the NYU logo is the torch block and "NEW YORK UNIVERSITY" side by side in a
- * single path, so the viewBox is cropped to the block and the letters are set
- * underneath in the page's own type.
+ * NYU's lock-up is assembled here. The file published as the NYU logo draws
+ * the torch block and "NEW YORK UNIVERSITY" as one path side by side, so the
+ * viewBox is cropped to the block — which leaves the lettering outside the
+ * viewport, where the root clips it — and the letters are set underneath in
+ * the page's own type.
+ *
+ * Heights are per mark, not shared: Stanford is tall and narrow at about
+ * 2:3 while Purdue's P is wide at nearly 2:1, and one height for all five
+ * makes some tower and others vanish.
  */
 const SCHOOLS = [
   { name: "University of Pennsylvania", src: "/logos/penn-shield.svg", w: 21, h: 24 },
+  { name: "New York University", torch: true, w: 18, h: 18 },
   { name: "Purdue University", src: "/logos/purdue-p.svg", w: 32, h: 17 },
+  { name: "Stanford University", src: "/logos/stanford.svg", w: 17, h: 26 },
+  { name: "Yale University", src: "/logos/yale.svg", w: 27, h: 28 },
 ];
 
 const NYU_VIOLET = "#57068C";
 
+/**
+ * Five marks are not enough to fill a wide screen twice over, and the loop
+ * only reads as seamless when the track is at least double the viewport and
+ * slides exactly half its own width. Repeating the run gets it past that on
+ * an ultrawide display; the images are one cached file each, so the cost is
+ * DOM nodes rather than bytes.
+ */
+const RUNS = 10;
+
 function LaunchBar() {
   return (
-    <div className="border-b border-rule">
-      <div className="broadsheet-full">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2.5">
-          <span className="text-sm text-muted italic">Launching at</span>
-
-          {/* Penn */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={SCHOOLS[0].src}
-            alt={SCHOOLS[0].name}
-            width={SCHOOLS[0].w}
-            height={SCHOOLS[0].h}
-            style={{ width: SCHOOLS[0].w, height: SCHOOLS[0].h }}
-            className="shrink-0"
-          />
-
-          {/* NYU: torch over letters, treated as one mark by assistive tech. */}
-          <span
-            role="img"
-            aria-label="New York University"
-            className="flex shrink-0 flex-col items-center leading-none"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logos/nyu-torch.svg"
-              alt=""
-              width={18}
-              height={18}
-              style={{ width: 18, height: 18 }}
-            />
-            <span
-              className="mt-[3px] text-[8px] font-bold tracking-[0.06em]"
-              style={{ color: NYU_VIOLET }}
-            >
-              NYU
-            </span>
-          </span>
-
-          {/* Purdue */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={SCHOOLS[1].src}
-            alt={SCHOOLS[1].name}
-            width={SCHOOLS[1].w}
-            height={SCHOOLS[1].h}
-            style={{ width: SCHOOLS[1].w, height: SCHOOLS[1].h }}
-            className="shrink-0"
-          />
-        </div>
+    <div className="ticker border-b border-rule">
+      <div className="ticker-track" style={{ animationDuration: "38s" }}>
+        {Array.from({ length: RUNS }, (_, i) => (
+          <SchoolRun key={i} ariaHidden={i > 0} />
+        ))}
       </div>
     </div>
+  );
+}
+
+function SchoolRun({ ariaHidden = false }: { ariaHidden?: boolean }) {
+  return (
+    <ul
+      className="flex shrink-0 items-center"
+      aria-hidden={ariaHidden || undefined}
+      aria-label={ariaHidden ? undefined : "Launching at"}
+    >
+      {SCHOOLS.map((school) => (
+        <li
+          key={school.name}
+          className="flex h-11 shrink-0 items-center justify-center px-12"
+        >
+          {school.torch ? (
+            <span
+              role="img"
+              aria-label={ariaHidden ? undefined : school.name}
+              className="flex flex-col items-center leading-none"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logos/nyu-torch.svg"
+                alt=""
+                width={school.w}
+                height={school.h}
+                style={{ width: school.w, height: school.h }}
+              />
+              <span
+                className="mt-[3px] text-[8px] font-bold tracking-[0.06em]"
+                style={{ color: NYU_VIOLET }}
+              >
+                NYU
+              </span>
+            </span>
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={school.src}
+              alt={ariaHidden ? "" : school.name}
+              width={school.w}
+              height={school.h}
+              style={{ width: school.w, height: school.h }}
+            />
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 
