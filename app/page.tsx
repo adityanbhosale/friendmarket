@@ -174,11 +174,57 @@ function TapeRun({ ariaHidden = false }: { ariaHidden?: boolean }) {
   );
 }
 
+/**
+ * Where it is opening. Sits above the headline as a small line of standing
+ * type, the way a masthead carries a dateline.
+ *
+ * Official wordmarks in their own brand colours — the one place on the site
+ * that is not black and white, because a university's mark in the wrong
+ * colour stops being that university's mark.
+ *
+ * NYU shipped with pixel dimensions and no viewBox, which was added so it
+ * scales to the height set here instead of locking to 350px.
+ *
+ * The three lock-ups have very different proportions (Penn is stacked at
+ * roughly 2:1, NYU is a single line at nearly 6:1), so heights are set per
+ * mark rather than uniformly. A single shared height makes NYU tower and
+ * Penn shrink to nothing.
+ */
+const SCHOOLS = [
+  { name: "Penn", src: "/logos/penn.svg", w: 55, h: 26 },
+  { name: "New York University", src: "/logos/nyu.svg", w: 80, h: 14 },
+  { name: "Purdue University", src: "/logos/purdue.svg", w: 56, h: 18 },
+];
+
+function LaunchingAt() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
+      <span className="text-sm text-muted">Launching at</span>
+      {SCHOOLS.map(({ name, src, w, h }) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={name}
+          src={src}
+          alt={name}
+          width={w}
+          height={h}
+          style={{ height: h, width: w }}
+          className="shrink-0"
+        />
+      ))}
+    </div>
+  );
+}
+
 function Hero() {
   return (
     <section className="border-b border-rule">
       <div className="broadsheet-full">
         <div className="pt-20 sm:pt-24 lg:pt-28">
+          <div className="mb-7">
+            <LaunchingAt />
+          </div>
+
           <h1 className="type-hero text-balance">
             <StaggeredWords text={HEADLINE} />
           </h1>
