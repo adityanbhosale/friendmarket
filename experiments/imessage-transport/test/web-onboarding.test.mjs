@@ -9,16 +9,16 @@ import {
 } from "../src/web-onboarding.mjs";
 
 test("parses only a complete Sidebar web onboarding command", () => {
-  assert.equal(parseWebStartRequest("@sidebar start k7qm3xpd"), "K7QM-3XPD");
+  assert.equal(parseWebStartRequest("sidebar start k7qm3xpd"), "K7QM-3XPD");
   assert.equal(parseWebStartRequest(" @Sidebar, start K7QM-3XPD "), "K7QM-3XPD");
-  assert.equal(parseWebStartRequest("@sidebar start"), null);
+  assert.equal(parseWebStartRequest("sidebar start"), null);
   assert.equal(parseWebStartRequest("please @sidebar start K7QM-3XPD"), null);
   assert.equal(parseWebStartRequest("@sidebar start ABIO-1001"), null);
 });
 
 test("recognizes only explicit direct-message group recovery requests", () => {
-  assert.equal(isGroupRecoveryRequest("@sidebar"), true);
-  assert.equal(isGroupRecoveryRequest("@sidebar groups"), true);
+  assert.equal(isGroupRecoveryRequest("sidebar"), true);
+  assert.equal(isGroupRecoveryRequest("sidebar groups"), true);
   assert.equal(isGroupRecoveryRequest("@sidebar group code"), true);
   assert.equal(isGroupRecoveryRequest("@sidebar recover"), true);
   assert.equal(isGroupRecoveryRequest("please @sidebar"), false);
@@ -55,7 +55,7 @@ test("stages a verified web group and replies with the native group step", async
       id: "message-1",
       chatId: "direct-chat-1",
       participant: "+12125550199",
-      text: "@sidebar start K7QM-3XPD",
+      text: "sidebar start K7QM-3XPD",
     }),
     true,
   );
@@ -67,7 +67,7 @@ test("stages a verified web group and replies with the native group step", async
   assert.deepEqual(replies, [
     {
       to: "direct-chat-1",
-      text: "You're all set for Monkey Business. Add me to the iMessage group chat, then send “@sidebar help” there.",
+      text: "you're all set for monkey business\nadd me to the group chat, then send “sidebar help” there",
     },
   ]);
 });
@@ -93,7 +93,7 @@ test("ignores ordinary direct messages and rejects an Apple ID email identity", 
     }),
     true,
   );
-  assert.match(replies[0].text, /couldn't verify.*phone number/i);
+  assert.match(replies[0].text, /couldn't match.*phone number/i);
 });
 
 test("recovers only groups attached to the direct sender's phone identity", async () => {
@@ -116,13 +116,13 @@ test("recovers only groups attached to the direct sender's phone identity", asyn
   });
 
   assert.equal(
-    await handler({ chatId: "dm-1", participant: "+12125550199", text: "@sidebar" }),
+    await handler({ chatId: "dm-1", participant: "+12125550199", text: "sidebar" }),
     true,
   );
   assert.equal(calls[0].length, 64);
-  assert.match(replies[0].text, /Monkey Business: K7QM-3XPD/);
-  assert.match(replies[0].text, /Lake House: ABCD-EFGH/);
-  assert.match(replies[0].text, /shared group password is not included/i);
+  assert.match(replies[0].text, /monkey business: k7qm-3xpd/);
+  assert.match(replies[0].text, /lake house: abcd-efgh/);
+  assert.match(replies[0].text, /shared group password isn't included/i);
 });
 
 test("group recovery reveals nothing for an unregistered phone", async () => {

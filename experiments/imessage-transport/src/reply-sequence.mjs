@@ -5,7 +5,8 @@ export function replyMessages(reply) {
   return values
     .flatMap((value) => String(value ?? "").split(/\n+/))
     .map((value) => value.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((value) => value.toLocaleLowerCase("en-US"));
 }
 
 export async function sendReplySequence({

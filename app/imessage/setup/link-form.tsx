@@ -21,7 +21,7 @@ export function LinkCurrentGroupForm({
       <div className="border-t border-b border-foreground py-6">
         <p className="font-medium">iMessage connected.</p>
         <p className="mt-2 text-sm text-muted">
-          Return to the group chat and send “@sidebar, help”.
+          Return to the group chat and send “sidebar help”.
         </p>
         <Link href="/group" className="mt-5 inline-block text-sm underline underline-offset-4">
           Continue to {groupName} →

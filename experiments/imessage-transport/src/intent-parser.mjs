@@ -1,4 +1,6 @@
-const BOT_PREFIX = /^\s*@sidebar\b\s*[:,\-]?\s*/i;
+// Plain `sidebar ...` is the product syntax. Keep `@sidebar ...` working so
+// links and habits from the earlier beta do not fail abruptly.
+const BOT_PREFIX = /^\s*@?sidebar\b\s*[:,\-]?\s*/i;
 
 const ACTIONS = new Set([
   "help",
@@ -11,6 +13,8 @@ const ACTIONS = new Set([
   "leave_market",
   "place_bet",
   "resolve_market",
+  "group_request",
+  "chat",
   "unknown",
 ]);
 
@@ -29,6 +33,9 @@ export function parseDeterministicIntent(text, { now = new Date(), markets = [] 
   if (/^(?:start|help|commands|what can you do)\??$/i.test(request)) {
     return intent("help");
   }
+
+  const groupRequest = parseGroupRequest(request);
+  if (groupRequest) return groupRequest;
 
   const subjectCompletion = parseSubjectCompletion(request);
   if (subjectCompletion) return subjectCompletion;
@@ -90,6 +97,9 @@ export async function parseNaturalLanguageIntent({
   const deterministic = parseDeterministicIntent(text, { now, markets });
   if (!apiKey) {
     if (deterministic) return deterministic;
+    if (!pendingMarketDraft && !hasProductRequestSignal(stripBotPrefix(text))) {
+      return fallbackChat();
+    }
     return unknown(
       "i didn't get that — try saying it another way",
     );
@@ -136,11 +146,32 @@ export async function parseNaturalLanguageIntent({
     if (!outputText) throw new Error("OpenAI returned no structured intent output.");
 
     const modeled = validateModelIntent(JSON.parse(outputText));
+    const request = stripBotPrefix(text).trim();
+    // Group and market are different product objects. A clear group request
+    // must never be promoted into a market mutation, even if the model errs.
+    if (deterministic?.action === "group_request") return deterministic;
+    // An addressed joke cannot become a half-filled market action. Pending
+    // drafts and fully grounded commands still pass through normally.
+    if (
+      !pendingMarketDraft &&
+      !deterministic &&
+      !hasProductRequestSignal(request) &&
+      modeled.action !== "chat"
+    ) {
+      return intent("chat", {
+        replyMessages: modeled.replyMessages?.length
+          ? modeled.replyMessages
+          : fallbackChat().replyMessages,
+      });
+    }
     if (modeled.action === "unknown" && deterministic) return deterministic;
     return modeled;
   } catch {
     // An obvious command should still work during a transient model outage.
     if (deterministic) return deterministic;
+    if (!pendingMarketDraft && !hasProductRequestSignal(stripBotPrefix(text))) {
+      return fallbackChat();
+    }
     return unknown("i'm having trouble reading that — try again in a sec");
   }
 }
@@ -163,6 +194,11 @@ export const INTENT_SCHEMA = {
     resolveAt: { type: ["string", "null"] },
     subjectName: { type: ["string", "null"] },
     subjectPhone: { type: ["string", "null"] },
+    requestedGroupName: { type: ["string", "null"] },
+    replyMessages: {
+      type: "array",
+      items: { type: "string" },
+    },
     confidence: { type: "number", minimum: 0, maximum: 1 },
     clarification: { type: ["string", "null"] },
   },
@@ -178,6 +214,8 @@ export const INTENT_SCHEMA = {
     "resolveAt",
     "subjectName",
     "subjectPhone",
+    "requestedGroupName",
+    "replyMessages",
     "confidence",
     "clarification",
   ],
@@ -185,6 +223,35 @@ export const INTENT_SCHEMA = {
 
 function stripBotPrefix(text) {
   return String(text ?? "").replace(BOT_PREFIX, "");
+}
+
+function parseGroupRequest(request) {
+  const directlyTargetsGroup =
+    /\b(?:create|make|open|start)\s+(?:a\s+)?(?:new\s+)?(?:group|groupchat|group\s+chat)\b/i.test(
+      request,
+    ) ||
+    /\b(?:name|rename|title|call)\s+(?:(?:this|the|our)\s+)?(?:group|groupchat|group\s+chat)\b/i.test(
+      request,
+    );
+  if (!directlyTargetsGroup) {
+    return null;
+  }
+  const name = request.match(
+    /\b(?:called|named|titled)\s+["“]?(.+?)["”]?\s*[.!?]*$/i,
+  )?.[1]?.trim();
+  return intent("group_request", {
+    requestedGroupName: name ? name.slice(0, 60) : null,
+  });
+}
+
+function hasProductRequestSignal(request) {
+  return /\b(?:markets?|odds?|pot|payouts?|points?|bet|stake|wager|resolve|adjudicate|settle|join|leave|show|list|create|open|close|closes|deadline|subject|group|help|commands?)\b/i.test(
+    request,
+  );
+}
+
+function fallbackChat() {
+  return intent("chat", { replyMessages: ["lol fair", "what's up?"] });
 }
 
 function parseBet(request, markets) {
@@ -449,6 +516,8 @@ function intent(action, fields = {}) {
     resolveAt: null,
     subjectName: null,
     subjectPhone: null,
+    requestedGroupName: null,
+    replyMessages: [],
     confidence: 1,
     clarification: null,
     source: "deterministic",
@@ -466,17 +535,21 @@ function buildSystemPrompt({ now, timezone, markets, pendingMarketDraft }) {
     .map((market) => `#${market.display_num}: ${market.question}`)
     .join("\n");
   return [
-    "Convert one Sidebar group-chat request into exactly one structured market action.",
+    "Classify one message addressed to Sidebar, and extract an app action only when the user actually requests one.",
     "Do not execute anything and do not invent IDs, amounts, outcomes, or times.",
+    "Use chat for jokes, insults, encouragement, banter, reactions, or anything that does not ask to read or change Sidebar state. Idioms such as lock in, bet, odds, or stake are not app commands without actual market context.",
+    "Use group_request when the user asks to create, make, name, rename, title, or open a group or group chat. A native iMessage chat maps to one Sidebar group, so never reinterpret a group request as create_market. Copy an explicitly requested name into requestedGroupName.",
     "For clear market creation intent, always return create_market even when fields are missing. Leave missing fields null so the app can ask one follow-up at a time.",
     "If a pending market draft is shown, treat the user's message as a possible answer to its missing field and merge only information the user actually supplied.",
-    "For other ambiguous requests, use unknown with one short clarification question.",
+    "For other ambiguous app requests, use unknown with one short clarification question. Do not ask for market fields unless the user clearly asked to create, change, inspect, join, bet on, or resolve a market.",
     "create_market preserves the user's question and close time. criteria may summarize a stated resolution condition. If it is about a named person, put their name in subjectName and copy a supplied phone number into subjectPhone; never invent one.",
     "complete_person_market supplies the name and phone requested for the caller's pending market. complete_market_without_subject confirms that a pending market is not about a person.",
     "place_bet needs marketNumber, side yes/no, and a positive whole-number amount.",
     "join_market and leave_market need marketNumber.",
     "resolve_market needs marketNumber and side yes/no/void.",
-    "Clarification style: casual group-chat voice, lowercase, under 90 characters, no greeting, apology, filler, or sign-off.",
+    "For chat, write 1 to 3 short natural replies in replyMessages. For every other action replyMessages must be empty.",
+    "Reply style: lowercase, casual group-chat voice, usually under 60 characters per message, no greeting, formal explanation, filler, or sign-off.",
+    "Clarification style: one short lowercase question under 80 characters.",
     `Current time: ${now.toISOString()}`,
     `Group timezone: ${timezone}`,
     marketContext ? `Known markets:\n${marketContext}` : "Known markets: none",
@@ -506,7 +579,16 @@ function validateModelIntent(value) {
     return unknown(value.clarification || "can you say that another way?");
   }
   const clarification = value.clarification
-    ? String(value.clarification).trim().slice(0, 140)
+    ? String(value.clarification).trim().toLowerCase().slice(0, 100)
     : null;
-  return { ...value, clarification, source: "openai" };
+  const replyMessages = Array.isArray(value.replyMessages)
+    ? value.replyMessages
+        .map((message) => String(message ?? "").trim().toLowerCase().slice(0, 160))
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
+  if (value.action === "chat" && replyMessages.length === 0) {
+    return unknown("what's up?");
+  }
+  return { ...value, clarification, replyMessages, source: "openai" };
 }

@@ -79,13 +79,14 @@ try {
             expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
           });
           const setupUrl = `${appUrl}/imessage/setup?token=${encodeURIComponent(token)}`;
-          await sdk.send({
-            to: senderId,
-            text: [
-              "Finish connecting iMessage to Sidebar:",
+          await sendReplySequence({
+            reply: [
+              "finish connecting imessage to sidebar",
               setupUrl,
-              "This one-time link expires in 15 minutes.",
-            ].join("\n"),
+              "this link expires in 15 min",
+            ],
+            delayMs: replyDelayMs,
+            send: (text) => sdk.send({ to: senderId, text }),
           });
         }
       : null;

@@ -105,8 +105,8 @@ test("holds a likely person market and prompts for the subject phone", async () 
   assert.equal(calls[0].subjectName, "Dan");
   assert.equal(calls[0].expiresAt, "2026-08-18T16:15:00.000Z");
   assert.match(result, /what's Dan's phone number/i);
-  assert.match(result, /@sidebar subject Dan/);
-  assert.match(result, /@sidebar no subject/);
+  assert.match(result, /sidebar subject Dan/);
+  assert.match(result, /sidebar no subject/);
 });
 
 test("finishes a pending person market with only a one-way phone hash", async () => {
@@ -222,7 +222,7 @@ test("agent binds the iMessage identities before parsing or executing", async ()
   const result = await agent({
     conversationId: "chat-1",
     senderId: "+15550000001",
-    text: "@sidebar, show markets",
+    text: "sidebar show markets",
   });
 
   assert.deepEqual(calls, [
@@ -240,8 +240,8 @@ test("unbound identities cannot reach the database", async () => {
     },
     resolveBinding: () => ({ status: "unbound_sender", groupId: GROUP_ID }),
   });
-  const result = await agent({ conversationId: "chat", senderId: "sender", text: "@sidebar help" });
-  assert.match(result, /you aren't.*@sidebar start/s);
+  const result = await agent({ conversationId: "chat", senderId: "sender", text: "sidebar help" });
+  assert.match(result, /you aren't.*sidebar start/s);
 });
 
 test("Sidebar start issues a setup link before any market access", async () => {
@@ -322,10 +322,65 @@ test("unprefixed text is ignored before binding or database access", async () =>
     },
   });
   assert.equal(
-    await agent({ conversationId: "chat", senderId: "sender", text: "Sidebar, show markets" }),
+    await agent({ conversationId: "chat", senderId: "sender", text: "hey sidebar, show markets" }),
     null,
   );
   assert.equal(called, false);
+});
+
+test("explains a group request without creating a market", async () => {
+  let mutated = false;
+  const agent = createSidebarAgent({
+    client: {
+      requireMembership: async () => undefined,
+      listMarkets: async () => [],
+      getGroup: async () => ({ id: GROUP_ID, name: "Monkey Business" }),
+      openMarket: async () => {
+        mutated = true;
+      },
+    },
+    resolveBinding: async () => ({ status: "bound", groupId: GROUP_ID, userId: USER_ID }),
+    now: () => NOW,
+  });
+
+  const result = await agent({
+    conversationId: "chat-1",
+    senderId: "sender-1",
+    text: "sidebar make a group titled monkey business",
+  });
+
+  assert.equal(mutated, false);
+  assert.deepEqual(result, [
+    "this chat is already the sidebar group “Monkey Business”",
+    "were you trying to make a market?",
+  ]);
+});
+
+test("returns social replies without attempting a market action", async () => {
+  let mutated = false;
+  const agent = createSidebarAgent({
+    client: {
+      requireMembership: async () => undefined,
+      listMarkets: async () => [],
+      openMarket: async () => {
+        mutated = true;
+      },
+    },
+    resolveBinding: async () => ({ status: "bound", groupId: GROUP_ID, userId: USER_ID }),
+    parseIntent: async () => ({
+      action: "chat",
+      replyMessages: ["damn 😭", "i'm locked in"],
+    }),
+    now: () => NOW,
+  });
+
+  const result = await agent({
+    conversationId: "chat-1",
+    senderId: "sender-1",
+    text: "sidebar the public hates you can you lock in",
+  });
+  assert.equal(mutated, false);
+  assert.deepEqual(result, ["damn 😭", "i'm locked in"]);
 });
 
 test("formats final payouts after deterministic resolution", async () => {

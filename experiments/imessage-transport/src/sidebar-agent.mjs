@@ -32,7 +32,7 @@ export function createSidebarAgent({
 
     if (isStartRequest(envelope.text)) {
       if (binding.status === "bound") {
-        return "you're already connected\nsend @sidebar help if you need me";
+        return "you're already connected\nsend sidebar help if you need me";
       }
       if (!issueSetupLink) {
         return "setup isn't configured on this agent yet";
@@ -53,10 +53,10 @@ export function createSidebarAgent({
     }
 
     if (binding.status === "unbound_group") {
-      return "this chat isn't connected yet\nsend @sidebar start";
+      return "this chat isn't connected yet\nsend sidebar start";
     }
     if (binding.status === "unbound_sender") {
-      return "this chat is connected, but you aren't\nsend @sidebar start";
+      return "this chat is connected, but you aren't\nsend sidebar start";
     }
 
     try {
@@ -111,9 +111,24 @@ export async function executeIntent({
     case "help":
       return [
         "i can make markets, show odds, take bets, and resolve outcomes",
-        "try: @sidebar make a market on whether dan is late tonight",
+        "try: sidebar make a market on whether dan is late tonight",
         "i'll ask for anything missing",
       ].join("\n");
+    case "group_request": {
+      const group = typeof client.getGroup === "function"
+        ? await client.getGroup(binding.groupId)
+        : null;
+      return [
+        group?.name
+          ? `this chat is already the sidebar group “${group.name}”`
+          : "this chat is already linked to a sidebar group",
+        "were you trying to make a market?",
+      ];
+    }
+    case "chat":
+      return Array.isArray(intent.replyMessages) && intent.replyMessages.length
+        ? intent.replyMessages.slice(0, 3)
+        : ["lol", "what's up?"];
     case "list_markets":
       return formatMarketList(marketRows, now);
     case "show_market": {
@@ -159,8 +174,8 @@ export async function executeIntent({
         clearPendingMarketDraft();
         return [
           `what's ${input.subjectName}'s phone number?`,
-          `reply: @sidebar subject ${input.subjectName} +12125550199`,
-          "not about a person? say @sidebar no subject",
+          `reply: sidebar subject ${input.subjectName} +12125550199`,
+          "not about a person? say sidebar no subject",
         ].join("\n");
       }
       if (dryRun) return `would make this market\n${input.question}`;
@@ -251,30 +266,30 @@ export async function executeIntent({
     case "unknown":
       return intent.clarification || "what do you want me to do?";
     default:
-      throw new Error("That Sidebar action is not supported.");
+      throw new Error("that sidebar action isn't supported");
   }
 }
 
 function validateCreateIntent(intent, now) {
   const question = String(intent.question ?? "").trim();
-  if (!question) throw new Error("A market needs a question.");
-  if (question.length > 200) throw new Error("The market question must be 200 characters or fewer.");
+  if (!question) throw new Error("a market needs a question");
+  if (question.length > 200) throw new Error("the market question has to stay under 200 characters");
 
   const closeAt = validDate(intent.closeAt, "betting close time");
   const revealAt = intent.revealAt ? validDate(intent.revealAt, "reveal time") : new Date(now.getTime() + 1_000);
   const resolveAt = intent.resolveAt ? validDate(intent.resolveAt, "resolve time") : new Date(closeAt.getTime() + 1_000);
-  if (closeAt <= now) throw new Error("Betting must close in the future.");
+  if (closeAt <= now) throw new Error("betting has to close in the future");
   if (!(revealAt < closeAt && closeAt < resolveAt)) {
-    throw new Error("Times must run in order: reveal, close, then resolve.");
+    throw new Error("the times have to go reveal, close, then resolve");
   }
 
   const criteria = String(
     intent.criteria || `Resolves Yes if “${question}” is true when betting closes.`,
   ).trim();
-  if (criteria.length > 500) throw new Error("Resolution criteria must be 500 characters or fewer.");
+  if (criteria.length > 500) throw new Error("keep the resolution criteria under 500 characters");
   const subjectName = intent.subjectName ? String(intent.subjectName).trim() : null;
   if (subjectName && subjectName.length > 40) {
-    throw new Error("The market subject's name must be 40 characters or fewer.");
+    throw new Error("keep the subject's name under 40 characters");
   }
   return {
     question,
@@ -361,15 +376,15 @@ export function createPendingMarketDraftStore({
 
 function requirePhoneHash(hashPhone, value) {
   if (typeof hashPhone !== "function") {
-    throw new Error("Phone identity matching is not configured on this agent.");
+    throw new Error("phone matching isn't configured on this agent");
   }
   const hash = hashPhone(value);
-  if (!hash) throw new Error("Enter a valid phone number, including country code if outside the US.");
+  if (!hash) throw new Error("send a valid phone number with the country code if you're outside the us");
   return hash;
 }
 
 function formatCreatedMarket(market, timezone) {
-  if (!market) throw new Error("The market was created but could not be loaded.");
+  if (!market) throw new Error("the market was created but i couldn't load it");
   const lines = [
     `market #${market.display_num} is live`,
     market.question,
@@ -481,7 +496,7 @@ function requirePositiveInteger(value, label) {
 
 function validDate(value, label) {
   const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) throw new Error(`Enter a valid ${label}.`);
+  if (Number.isNaN(date.valueOf())) throw new Error(`send a valid ${label}`);
   return date;
 }
 

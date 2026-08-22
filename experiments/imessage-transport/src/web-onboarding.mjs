@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 
-const WEB_START = /^\s*@sidebar\s*,?\s*start\s+([A-HJ-NP-Z2-9]{4})\s*-?\s*([A-HJ-NP-Z2-9]{4})\s*$/i;
-const GROUP_RECOVERY = /^\s*@sidebar(?:\s+(?:groups?|group\s+codes?|recover))?\s*[.!?]*\s*$/i;
+const WEB_START = /^\s*@?sidebar\s*,?\s*start\s+([A-HJ-NP-Z2-9]{4})\s*-?\s*([A-HJ-NP-Z2-9]{4})\s*$/i;
+const GROUP_RECOVERY = /^\s*@?sidebar(?:\s+(?:groups?|group\s+codes?|recover))?\s*[.!?]*\s*$/i;
 
 export function parseWebStartRequest(text) {
   const match = String(text ?? "").match(WEB_START);
@@ -38,6 +38,11 @@ export function createDirectOnboardingHandler({
   appUrl = "https://www.trysidebar.xyz",
   dryRun = false,
 }) {
+  const reply = (message) =>
+    send({
+      ...message,
+      text: String(message.text ?? "").toLocaleLowerCase("en-US"),
+    });
   return async function handleDirectOnboarding(message) {
     const destination = message.chatId || message.participant;
     const registeredPhoneHash = deriveRegisteredPhoneHash(
@@ -46,23 +51,23 @@ export function createDirectOnboardingHandler({
     );
     if (isGroupRecoveryRequest(message.text)) {
       if (!destination || !message.participant || !registeredPhoneHash) {
-        await send({
+        await reply({
           to: destination || message.participant,
-          text: "I couldn't verify this iMessage as a registered Sidebar phone number.",
+          text: "i couldn't verify this imessage as a registered sidebar phone number",
         });
         return true;
       }
       if (dryRun) return true;
       try {
         const groups = await client.listGroupsForPhone(registeredPhoneHash);
-        await send({
+        await reply({
           to: destination,
           text: formatGroupRecovery(groups, appUrl),
         });
       } catch (error) {
-        await send({
+        await reply({
           to: destination,
-          text: `I couldn't recover your Sidebar groups: ${safeMessage(error)}`,
+          text: `i couldn't recover your sidebar groups: ${safeMessage(error)}`,
         });
       }
       return true;
@@ -72,9 +77,9 @@ export function createDirectOnboardingHandler({
     if (!groupLinkId) return false;
 
     if (!destination || !message.participant || !registeredPhoneHash) {
-      await send({
+      await reply({
         to: destination || message.participant,
-        text: "I couldn't verify this iMessage as the phone number registered with Sidebar. Start the conversation from that number and try again.",
+        text: "i couldn't match this imessage to your sidebar phone number\ntry again from the number you registered",
       });
       return true;
     }
@@ -88,14 +93,14 @@ export function createDirectOnboardingHandler({
         phoneHash: registeredPhoneHash,
         expiresAt: new Date(now().getTime() + 24 * 60 * 60_000).toISOString(),
       });
-      await send({
+      await reply({
         to: destination,
-        text: `You're all set for ${staged.groupName}. Add me to the iMessage group chat, then send “@sidebar help” there.`,
+        text: `you're all set for ${staged.groupName}\nadd me to the group chat, then send “sidebar help” there`,
       });
     } catch (error) {
-      await send({
+      await reply({
         to: destination,
-        text: `I couldn't connect that group: ${safeMessage(error)}`,
+        text: `i couldn't connect that group\n${safeMessage(error)}`,
       });
     }
     return true;
@@ -104,16 +109,16 @@ export function createDirectOnboardingHandler({
 
 function formatGroupRecovery(groups, appUrl) {
   if (!groups.length) {
-    return "I couldn't find a Sidebar group registered to this iMessage phone number. If you joined with another number, use that number or your recovery code on the website.";
+    return "i couldn't find a sidebar group for this number\ntry the number you registered or use your recovery code on the site";
   }
   const base = String(appUrl || "https://www.trysidebar.xyz").replace(/\/$/, "");
   const lines = groups.slice(0, 10).map(
     (group) => `${group.groupName}: ${group.groupCode}\n${base}/join/${group.groupCode}`,
   );
   return [
-    groups.length === 1 ? "Your Sidebar group:" : "Your Sidebar groups:",
+    groups.length === 1 ? "your sidebar group:" : "your sidebar groups:",
     ...lines,
-    "The shared group password is not included.",
+    "the shared group password isn't included",
   ].join("\n\n");
 }
 
@@ -122,5 +127,5 @@ function safeMessage(error) {
   if (typeof publicMessage === "string" && publicMessage.length <= 240) {
     return publicMessage;
   }
-  return "check the group code and make sure this iMessage number matches the phone number on your Sidebar membership.";
+  return "check the group code and make sure this is the number on your sidebar membership";
 }

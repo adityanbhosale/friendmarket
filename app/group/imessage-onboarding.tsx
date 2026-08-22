@@ -14,7 +14,7 @@ export function ImessageOnboarding({
   sidebarNumber: string;
 }) {
   const [status, setStatus] = useState("");
-  const command = `@sidebar start ${groupCode}`;
+  const command = `sidebar start ${groupCode}`;
 
   async function openMessages() {
     try {
@@ -45,7 +45,7 @@ export function ImessageOnboarding({
         </li>
         <li>
           <span className="mr-2 font-mono text-foreground">03</span>
-          Send <span className="font-mono text-foreground">@sidebar help</span> in
+          Send <span className="font-mono text-foreground">sidebar help</span> in
           that chat to finish linking it.
         </li>
       </ol>
