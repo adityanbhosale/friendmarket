@@ -5,6 +5,8 @@ const ACTIONS = new Set([
   "list_markets",
   "show_market",
   "create_market",
+  "complete_person_market",
+  "complete_market_without_subject",
   "join_market",
   "leave_market",
   "place_bet",
@@ -27,6 +29,9 @@ export function parseDeterministicIntent(text, { now = new Date(), markets = [] 
   if (/^(?:start|help|commands|what can you do)\??$/i.test(request)) {
     return intent("help");
   }
+
+  const subjectCompletion = parseSubjectCompletion(request);
+  if (subjectCompletion) return subjectCompletion;
 
   if (/\b(?:add|remove)\b.*\b(?:person|member|market)\b/i.test(request)) {
     return unknown(
@@ -145,6 +150,8 @@ export const INTENT_SCHEMA = {
     revealAt: { type: ["string", "null"] },
     closeAt: { type: ["string", "null"] },
     resolveAt: { type: ["string", "null"] },
+    subjectName: { type: ["string", "null"] },
+    subjectPhone: { type: ["string", "null"] },
     confidence: { type: "number", minimum: 0, maximum: 1 },
     clarification: { type: ["string", "null"] },
   },
@@ -158,6 +165,8 @@ export const INTENT_SCHEMA = {
     "revealAt",
     "closeAt",
     "resolveAt",
+    "subjectName",
+    "subjectPhone",
     "confidence",
     "clarification",
   ],
@@ -334,7 +343,28 @@ function parseCreateMarket(request, now) {
   const closeAt = parseRelativeInstant(match[2], now);
   if (!closeAt) return null;
 
-  const question = match[1].trim().replace(/^["“]|["”]$/g, "");
+  let questionText = match[1].trim();
+  let subjectName = null;
+  let subjectPhone = null;
+  const explicitWithPhone = questionText.match(
+    /\s+(?:subject|about)\s*:?\s*([A-Za-z][A-Za-z .'’-]{0,39}?)\s+(?:phone\s*:?\s*|at\s+)?(\+?\d[\d().\s-]{6,}\d)\s*$/i,
+  );
+  if (explicitWithPhone) {
+    subjectName = cleanSubjectName(explicitWithPhone[1]);
+    subjectPhone = explicitWithPhone[2].trim();
+    questionText = questionText.slice(0, explicitWithPhone.index).trim();
+  } else {
+    const explicitName = questionText.match(
+      /\s+(?:subject|about)\s*:?\s*([A-Za-z][A-Za-z .'’-]{0,39})\s*$/i,
+    );
+    if (explicitName) {
+      subjectName = cleanSubjectName(explicitName[1]);
+      questionText = questionText.slice(0, explicitName.index).trim();
+    }
+  }
+
+  const question = questionText.replace(/^["“]|["”]$/g, "");
+  subjectName ??= inferPersonName(question);
   const revealAt = new Date(now.getTime() + 1_000);
   const resolveAt = new Date(closeAt.getTime() + 1_000);
   return intent("create_market", {
@@ -343,7 +373,36 @@ function parseCreateMarket(request, now) {
     revealAt: revealAt.toISOString(),
     closeAt: closeAt.toISOString(),
     resolveAt: resolveAt.toISOString(),
+    subjectName,
+    subjectPhone,
   });
+}
+
+function parseSubjectCompletion(request) {
+  if (/^(?:no\s+subject|not\s+about\s+(?:a\s+)?person)\s*[.!?]*$/i.test(request)) {
+    return intent("complete_market_without_subject");
+  }
+  const match = request.match(
+    /^(?:subject|person)(?:\s+is)?\s*:?\s*([A-Za-z][A-Za-z .'’-]{0,39}?)\s+(?:phone\s*:?\s*|at\s+)?(\+?\d[\d().\s-]{6,}\d)\s*$/i,
+  );
+  if (!match) return null;
+  return intent("complete_person_market", {
+    subjectName: cleanSubjectName(match[1]),
+    subjectPhone: match[2].trim(),
+  });
+}
+
+function cleanSubjectName(value) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function inferPersonName(question) {
+  const match = question.match(/^Will\s+([A-Z][a-z'’-]{1,30}(?:\s+[A-Z][a-z'’-]{1,30})?)\s+\b/);
+  if (!match) return null;
+  if (new Set(["The", "This", "That", "There", "Everyone", "Anyone"]).has(match[1])) {
+    return null;
+  }
+  return match[1];
 }
 
 function parseRelativeInstant(value, now) {
@@ -377,6 +436,8 @@ function intent(action, fields = {}) {
     revealAt: null,
     closeAt: null,
     resolveAt: null,
+    subjectName: null,
+    subjectPhone: null,
     confidence: 1,
     clarification: null,
     source: "deterministic",
@@ -397,7 +458,8 @@ function buildSystemPrompt({ now, timezone, markets }) {
     "Convert one Sidebar group-chat request into exactly one structured market action.",
     "Do not execute anything and do not invent IDs, amounts, outcomes, or times.",
     "Use unknown with a short clarification when the request is ambiguous or incomplete.",
-    "create_market needs a question and closeAt; preserve the user's meaning. criteria may summarize the stated resolution condition.",
+    "create_market needs a question and closeAt; preserve the user's meaning. criteria may summarize the stated resolution condition. If it is about a named person, put their name in subjectName and copy a supplied phone number into subjectPhone; never invent one.",
+    "complete_person_market supplies the name and phone requested for the caller's pending market. complete_market_without_subject confirms that a pending market is not about a person.",
     "place_bet needs marketNumber, side yes/no, and a positive whole-number amount.",
     "join_market and leave_market need marketNumber.",
     "resolve_market needs marketNumber and side yes/no/void.",

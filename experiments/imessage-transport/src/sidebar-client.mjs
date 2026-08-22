@@ -206,7 +206,17 @@ export function createSidebarClient({
     };
   }
 
-  async function openMarket({ groupId, userId, question, criteria, revealAt, closeAt, resolveAt }) {
+  async function openMarket({
+    groupId,
+    userId,
+    question,
+    criteria,
+    revealAt,
+    closeAt,
+    resolveAt,
+    subjectName = null,
+    subjectPhoneHash = null,
+  }) {
     await requireMembership(groupId, userId);
     const marketId = await rpc("open_market_with_subject", {
       p_group_id: groupId,
@@ -216,8 +226,47 @@ export function createSidebarClient({
       p_reveal_at: revealAt,
       p_close_at: closeAt,
       p_resolve_at: resolveAt,
-      p_subject_name: null,
-      p_subject_phone_hash: null,
+      p_subject_name: subjectName,
+      p_subject_phone_hash: subjectPhoneHash,
+    });
+    return selectOne("markets", { id: `eq.${marketId}`, group_id: `eq.${groupId}` });
+  }
+
+  async function stageMarketDraft({
+    groupId,
+    userId,
+    question,
+    criteria,
+    revealAt,
+    closeAt,
+    resolveAt,
+    subjectName,
+    expiresAt,
+  }) {
+    await rpc("stage_imessage_market_draft", {
+      p_group_id: groupId,
+      p_user_id: userId,
+      p_question: question,
+      p_criteria: criteria,
+      p_reveal_at: revealAt,
+      p_close_at: closeAt,
+      p_resolve_at: resolveAt,
+      p_subject_name: subjectName,
+      p_expires_at: expiresAt,
+    });
+  }
+
+  async function completeMarketDraft({
+    groupId,
+    userId,
+    subjectName = null,
+    subjectPhoneHash = null,
+  }) {
+    const marketId = await rpc("complete_imessage_market_draft", {
+      p_group_id: groupId,
+      p_user_id: userId,
+      p_subject_name: subjectName,
+      p_subject_phone_hash: subjectPhoneHash,
     });
     return selectOne("markets", { id: `eq.${marketId}`, group_id: `eq.${groupId}` });
   }
@@ -310,6 +359,7 @@ export function createSidebarClient({
 
   return {
     createImessageSetup,
+    completeMarketDraft,
     claimImessageWebLink,
     getMarketByNumber,
     joinMarket,
@@ -321,6 +371,7 @@ export function createSidebarClient({
     resolveImessageBinding,
     resolveMarket,
     stageImessageWebLink,
+    stageMarketDraft,
   };
 }
 

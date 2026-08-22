@@ -29,6 +29,7 @@ Apply not-yet-run files from `migrations/` in numeric order:
 | `010_optional_imessage_links.sql` | Optional iMessage bindings and expiring browser setup links |
 | `011`–`015` | Adjudicators, member phone identity, persistent login reuse, and legacy identity repairs |
 | `016_web_first_imessage_onboarding.sql` | Verified website-to-iMessage group handoff |
+| `017_imessage_person_market_drafts.sql` | Expiring two-turn person-market creation from iMessage |
 
 Migration 006 intentionally aborts if existing native markets violate
 `reveal_at < close_at < resolve_at`. Repair those rows explicitly before retrying;

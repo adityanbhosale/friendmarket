@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Masthead, Shell, SectionLabel } from "../../shell";
-import { currentMembership } from "../../lib/auth";
+import { currentMembership, rememberedMemberForGroup } from "../../lib/auth";
 import { welcomePending } from "../../lib/session";
 import { selectOne } from "../../lib/db";
 import { normalizeGroupCode } from "../../lib/group-code";
 import { JoinForm } from "../join-form";
+import { ReturningJoinForm } from "../returning-join-form";
 
 export const metadata: Metadata = { title: "Join a group — Sidebar" };
 
@@ -32,6 +33,7 @@ export default async function JoinByLinkPage({
     link_id: `eq.${link_id}`,
   });
   if (!group) redirect("/join");
+  const remembered = await rememberedMemberForGroup(group.id);
 
   return (
     <main className="flex-1">
@@ -41,16 +43,21 @@ export default async function JoinByLinkPage({
           <div className="lg:col-span-4">
             <SectionLabel>Entry</SectionLabel>
             <h1 className="type-head mt-3 text-balance">
-              Now identify yourself inside the group.
+              {remembered ? `Welcome back, ${remembered.user.name}.` : "Enter this group."}
             </h1>
             <p className="measure mt-5 leading-relaxed text-muted">
-              Your phone opens the same member UUID every time. The shared
-              password proves you were meant to have access.
+              {remembered
+                ? "Confirm your registered phone number and the shared group password."
+                : "Enter your phone number, name, email, and the shared group password. Returning phone identities reopen the same member UUID."}
             </p>
           </div>
 
           <div className="lg:col-span-6 lg:col-start-6">
-            <JoinForm linkId={link_id} />
+            {remembered ? (
+              <ReturningJoinForm linkId={link_id} name={remembered.user.name} />
+            ) : (
+              <JoinForm linkId={link_id} />
+            )}
           </div>
         </div>
       </Shell>

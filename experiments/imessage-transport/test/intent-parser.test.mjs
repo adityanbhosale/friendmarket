@@ -33,6 +33,8 @@ test("parses natural bet and market query phrases without an LLM", () => {
       revealAt: null,
       closeAt: null,
       resolveAt: null,
+      subjectName: null,
+      subjectPhone: null,
       confidence: 1,
       clarification: null,
       source: "deterministic",
@@ -93,6 +95,8 @@ test("matches join and leave commands by question instead of requiring a number"
       revealAt: null,
       closeAt: null,
       resolveAt: null,
+      subjectName: null,
+      subjectPhone: null,
       confidence: 1,
       clarification: null,
       source: "deterministic",
@@ -115,6 +119,8 @@ test("parses a final-payout request as a market detail read", () => {
     revealAt: null,
     closeAt: null,
     resolveAt: null,
+    subjectName: null,
+    subjectPhone: null,
     confidence: 1,
     clarification: null,
     source: "deterministic",
@@ -132,6 +138,45 @@ test("parses a relative-time market creation without an LLM", () => {
   assert.equal(parsed.closeAt, "2026-08-18T22:00:00.000Z");
   assert.ok(Date.parse(parsed.revealAt) < Date.parse(parsed.closeAt));
   assert.ok(Date.parse(parsed.closeAt) < Date.parse(parsed.resolveAt));
+  assert.equal(parsed.subjectName, "Dan");
+  assert.equal(parsed.subjectPhone, null);
+});
+
+test("takes a person name and phone in the original market command", () => {
+  const parsed = parseDeterministicIntent(
+    "@sidebar create a market: Will Dan be late? subject Dan +1 (212) 555-0199 closes in 2 hours",
+    { now: new Date("2026-08-18T20:00:00.000Z") },
+  );
+  assert.equal(parsed.action, "create_market");
+  assert.equal(parsed.question, "Will Dan be late?");
+  assert.equal(parsed.subjectName, "Dan");
+  assert.equal(parsed.subjectPhone, "+1 (212) 555-0199");
+});
+
+test("parses the prompted person-market follow-up without an LLM", () => {
+  assert.deepEqual(
+    parseDeterministicIntent("@sidebar subject Dan +1 (212) 555-0199"),
+    {
+      action: "complete_person_market",
+      marketNumber: null,
+      side: null,
+      amount: null,
+      question: null,
+      criteria: null,
+      revealAt: null,
+      closeAt: null,
+      resolveAt: null,
+      subjectName: "Dan",
+      subjectPhone: "+1 (212) 555-0199",
+      confidence: 1,
+      clarification: null,
+      source: "deterministic",
+    },
+  );
+  assert.equal(
+    parseDeterministicIntent("@sidebar no subject").action,
+    "complete_market_without_subject",
+  );
 });
 
 test("does not call OpenAI for ordinary chatter", async () => {
@@ -186,6 +231,8 @@ test("uses strict structured output for ambiguous invoked language", async () =>
                     revealAt: null,
                     closeAt: null,
                     resolveAt: null,
+                    subjectName: null,
+                    subjectPhone: null,
                     confidence: 0.98,
                     clarification: null,
                   }),

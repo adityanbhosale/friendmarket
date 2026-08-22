@@ -5,6 +5,7 @@ import {
 } from "./intent-parser.mjs";
 import { SidebarDbError } from "./sidebar-client.mjs";
 import { fingerprint } from "./transport-core.mjs";
+import { deriveRegisteredPhoneHash } from "./web-onboarding.mjs";
 
 export function createSidebarAgent({
   client,
@@ -13,6 +14,7 @@ export function createSidebarAgent({
   now = () => new Date(),
   timezone = process.env.SIDEBAR_GROUP_TIMEZONE ?? "America/New_York",
   issueSetupLink,
+  hashPhone = (value) => deriveRegisteredPhoneHash(value, process.env.SESSION_SECRET),
   dryRun = false,
 } = {}) {
   if (!client || !resolveBinding) throw new Error("Sidebar agent needs a client and binding resolver.");
@@ -73,6 +75,7 @@ export function createSidebarAgent({
         marketRows,
         now: now(),
         timezone,
+        hashPhone,
         dryRun,
       });
     } catch (error) {
@@ -89,14 +92,16 @@ export async function executeIntent({
   marketRows = [],
   now,
   timezone = "America/New_York",
+  hashPhone,
   dryRun,
 }) {
   switch (intent.action) {
     case "help":
       return [
         "I can create and list markets, show odds/pot/time, place Yes or No bets, and resolve markets.",
-        "Join a market before betting. Person markets must be opened on the web so the subject's private phone identity can be attached.",
+        "Join a market before betting. For a person market, include their name and phone or I'll ask for them privately in the command flow.",
         "Try: “@sidebar, create a market: Will Dan be late? closes in 2 hours”",
+        "Then: “@sidebar subject Dan +12125550199”",
         "Or: “@sidebar, put 40 points on Dan being late”",
       ].join("\n");
     case "list_markets":
@@ -113,13 +118,63 @@ export async function executeIntent({
     }
     case "create_market": {
       const input = validateCreateIntent(intent, now);
+      const marketInput = {
+        question: input.question,
+        criteria: input.criteria,
+        revealAt: input.revealAt,
+        closeAt: input.closeAt,
+        resolveAt: input.resolveAt,
+        subjectName: input.subjectName,
+      };
+      if (input.subjectName && !input.subjectPhone) {
+        if (!dryRun) {
+          await client.stageMarketDraft({
+            groupId: binding.groupId,
+            userId: binding.userId,
+            ...marketInput,
+            expiresAt: new Date(now.getTime() + 15 * 60_000).toISOString(),
+          });
+        }
+        return [
+          `This looks like a market about ${input.subjectName}. What phone number should be blocked from betting?`,
+          `Reply “@sidebar subject ${input.subjectName} +12125550199”. If it isn't about a person, reply “@sidebar no subject”.`,
+          "This draft expires in 15 minutes.",
+        ].join("\n");
+      }
+      const subjectPhoneHash = input.subjectPhone
+        ? requirePhoneHash(hashPhone, input.subjectPhone)
+        : null;
       if (dryRun) return `Would create market: ${input.question}`;
       const market = await client.openMarket({
         groupId: binding.groupId,
         userId: binding.userId,
-        ...input,
+        ...marketInput,
+        subjectPhoneHash,
       });
-      return `Created market #${market.display_num}: ${market.question}\nBetting closes ${formatInstant(market.close_at, timezone)}.`;
+      return formatCreatedMarket(market, timezone);
+    }
+    case "complete_person_market": {
+      const subjectName = String(intent.subjectName ?? "").trim();
+      if (!subjectName || subjectName.length > 40) {
+        throw new Error("Reply with the person's name and phone number.");
+      }
+      const subjectPhoneHash = requirePhoneHash(hashPhone, intent.subjectPhone);
+      if (dryRun) return `Would finish the pending market about ${subjectName}.`;
+      const market = await client.completeMarketDraft({
+        groupId: binding.groupId,
+        userId: binding.userId,
+        subjectName,
+        subjectPhoneHash,
+      });
+      return formatCreatedMarket(market, timezone);
+    }
+    case "complete_market_without_subject": {
+      if (dryRun) return "Would finish the pending market without a person restriction.";
+      const market = await client.completeMarketDraft({
+        groupId: binding.groupId,
+        userId: binding.userId,
+      });
+      return formatCreatedMarket(market, timezone);
     }
     case "join_market": {
       requirePositiveInteger(intent.marketNumber, "market number");
@@ -197,13 +252,38 @@ function validateCreateIntent(intent, now) {
     intent.criteria || `Resolves Yes if “${question}” is true when betting closes.`,
   ).trim();
   if (criteria.length > 500) throw new Error("Resolution criteria must be 500 characters or fewer.");
+  const subjectName = intent.subjectName ? String(intent.subjectName).trim() : null;
+  const subjectPhone = intent.subjectPhone ? String(intent.subjectPhone).trim() : null;
+  if (subjectName && subjectName.length > 40) {
+    throw new Error("The market subject's name must be 40 characters or fewer.");
+  }
+  if (subjectPhone && !subjectName) {
+    throw new Error("A person market needs both the subject's name and phone number.");
+  }
   return {
     question,
     criteria,
     revealAt: revealAt.toISOString(),
     closeAt: closeAt.toISOString(),
     resolveAt: resolveAt.toISOString(),
+    subjectName,
+    subjectPhone,
   };
+}
+
+function requirePhoneHash(hashPhone, value) {
+  if (typeof hashPhone !== "function") {
+    throw new Error("Phone identity matching is not configured on this agent.");
+  }
+  const hash = hashPhone(value);
+  if (!hash) throw new Error("Enter a valid phone number, including country code if outside the US.");
+  return hash;
+}
+
+function formatCreatedMarket(market, timezone) {
+  if (!market) throw new Error("The market was created but could not be loaded.");
+  const subject = market.subject_name ? `\nSubject: ${market.subject_name} cannot join or bet.` : "";
+  return `Created market #${market.display_num}: ${market.question}${subject}\nBetting closes ${formatInstant(market.close_at, timezone)}.`;
 }
 
 function formatMarketList(rows, now) {

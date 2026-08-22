@@ -25,7 +25,12 @@ import {
   fingerprint,
   markWelcomePending,
 } from "./session";
-import { currentMembership, type Group, type User } from "./auth";
+import {
+  currentMembership,
+  rememberedMemberForGroup,
+  type Group,
+  type User,
+} from "./auth";
 import { STARTING_POINTS } from "./points";
 import { parseLocalDateTime } from "./datetime";
 import {
@@ -767,6 +772,78 @@ export async function joinGroup(
   return reportingDbErrors(
     () => joinGroupImpl(prev, formData),
     "Couldn't join that group.",
+  );
+}
+
+async function returnToGroupImpl(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const linkId = normalizeGroupId(formData.get("link_id"));
+  const password = String(formData.get("password") ?? "");
+  const phoneIdentity = derivePhoneIdentity(formData.get("phone"));
+  if (!linkId || !password || !phoneIdentity) {
+    return { error: "Group password and phone number are required." };
+  }
+
+  const client = await clientFingerprint();
+  const since = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString();
+  const failures = await count("join_attempts", {
+    link_id: `eq.${linkId}`,
+    client_hash: `eq.${client}`,
+    method: "eq.password",
+    succeeded: "is.false",
+    attempted_at: `gte.${since}`,
+  });
+  if (failures >= MAX_FAILURES) {
+    return { error: `Too many attempts. Try again in ${WINDOW_MINUTES} minutes.` };
+  }
+
+  const group = await selectOne<Group & { password_hash: string }>("groups", {
+    link_id: `eq.${linkId}`,
+  });
+  const remembered = group ? await rememberedMemberForGroup(group.id) : null;
+  const stored =
+    group?.password_hash ??
+    "scrypt$16384$8$1$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+  const passwordOk = await verifyPassword(password, stored);
+  const identityOk =
+    remembered?.membership.phone_attached_at &&
+    remembered.membership.phone_hash === phoneIdentity.phoneHash;
+
+  if (!group || !remembered || !passwordOk || !identityOk) {
+    await insertVoid("join_attempts", {
+      link_id: linkId,
+      client_hash: client,
+      method: "password",
+      succeeded: false,
+    });
+    return {
+      error: "That password and phone number don't match the remembered member.",
+    };
+  }
+
+  try {
+    await insertVoid("join_attempts", {
+      link_id: linkId,
+      client_hash: client,
+      method: "password",
+      succeeded: true,
+    });
+  } catch (error) {
+    console.error("[return audit]", error);
+  }
+  await createSession(remembered.user.id, group.id);
+  redirect("/group");
+}
+
+export async function returnToGroup(
+  prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  return reportingDbErrors(
+    () => returnToGroupImpl(prev, formData),
+    "Couldn't return to that group.",
   );
 }
 

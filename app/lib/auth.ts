@@ -3,7 +3,7 @@
 
 import { redirect } from "next/navigation";
 import { selectOne } from "./db";
-import { getSession, type Session } from "./session";
+import { getRememberedSession, getSession, type Session } from "./session";
 
 export type User = {
   id: string;
@@ -89,6 +89,36 @@ export async function currentMembership(): Promise<{
   if (!user || !group) return null;
 
   return { session, user, group, membership };
+}
+
+export async function rememberedMemberForGroup(groupId: string): Promise<{
+  user: User;
+  membership: GroupMembership;
+} | null> {
+  const remembered = await getRememberedSession();
+  if (!remembered || remembered.gid !== groupId) return null;
+
+  let userId = remembered.uid;
+  let membership = await selectOne<GroupMembership>("group_members", {
+    group_id: `eq.${groupId}`,
+    user_id: `eq.${userId}`,
+  });
+  if (!membership) {
+    const alias = await selectOne<MemberUuidAlias>("member_uuid_aliases", {
+      group_id: `eq.${groupId}`,
+      alias_user_id: `eq.${userId}`,
+    });
+    if (alias) {
+      userId = alias.canonical_user_id;
+      membership = await selectOne<GroupMembership>("group_members", {
+        group_id: `eq.${groupId}`,
+        user_id: `eq.${userId}`,
+      });
+    }
+  }
+  if (!membership) return null;
+  const user = await selectOne<User>("users", { id: `eq.${userId}` });
+  return user ? { user, membership } : null;
 }
 
 /** Same, but sends anyone without a live membership to the join page. */

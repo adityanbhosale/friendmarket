@@ -149,6 +149,48 @@ test("stages and claims the web-first iMessage handoff through database RPCs", a
   assert.equal(JSON.parse(requests[0].init.body).p_group_link_id, "K7QM-3XPD");
 });
 
+test("stages and completes a person-market draft through atomic RPCs", async () => {
+  const requests = [];
+  const responses = [null, "market-1", [{
+    id: "market-1",
+    group_id: "group-1",
+    display_num: 7,
+    subject_name: "Dan",
+  }]];
+  const client = createSidebarClient({
+    url: "https://example.supabase.co",
+    key: "test-key",
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      const value = responses.shift();
+      return value === null ? new Response(null, { status: 204 }) : json(value);
+    },
+  });
+
+  await client.stageMarketDraft({
+    groupId: "group-1",
+    userId: "user-1",
+    question: "Will Dan be late?",
+    criteria: "Dan arrives after 9pm.",
+    revealAt: "2026-08-18T16:00:01.000Z",
+    closeAt: "2026-08-18T18:00:00.000Z",
+    resolveAt: "2026-08-18T18:00:01.000Z",
+    subjectName: "Dan",
+    expiresAt: "2026-08-18T16:15:00.000Z",
+  });
+  const market = await client.completeMarketDraft({
+    groupId: "group-1",
+    userId: "user-1",
+    subjectName: "Dan",
+    subjectPhoneHash: "h".repeat(64),
+  });
+
+  assert.equal(market.id, "market-1");
+  assert.match(requests[0].url, /rpc\/stage_imessage_market_draft$/);
+  assert.match(requests[1].url, /rpc\/complete_imessage_market_draft$/);
+  assert.equal(JSON.stringify(requests).includes("+12125550199"), false);
+});
+
 test("lists markets only from the bound Sidebar group", async () => {
   const requests = [];
   const client = createSidebarClient({

@@ -78,6 +78,124 @@ test("dry-run write requests never call a mutation", async () => {
   assert.equal(result, "Would bet 10 points on No in market #3.");
 });
 
+test("holds a likely person market and prompts for the subject phone", async () => {
+  const calls = [];
+  const result = await executeIntent({
+    client: { stageMarketDraft: async (input) => calls.push(input) },
+    intent: {
+      action: "create_market",
+      question: "Will Dan be late?",
+      criteria: "Dan arrives after 9pm.",
+      revealAt: "2026-08-18T16:00:01.000Z",
+      closeAt: "2026-08-18T18:00:00.000Z",
+      resolveAt: "2026-08-18T18:00:01.000Z",
+      subjectName: "Dan",
+      subjectPhone: null,
+    },
+    binding: { groupId: GROUP_ID, userId: USER_ID },
+    now: NOW,
+    dryRun: false,
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].subjectName, "Dan");
+  assert.equal(calls[0].expiresAt, "2026-08-18T16:15:00.000Z");
+  assert.match(result, /phone number should be blocked/i);
+  assert.match(result, /@sidebar subject Dan/);
+  assert.match(result, /@sidebar no subject/);
+});
+
+test("finishes a pending person market with only a one-way phone hash", async () => {
+  const calls = [];
+  const result = await executeIntent({
+    client: {
+      completeMarketDraft: async (input) => {
+        calls.push(input);
+        return {
+          display_num: 4,
+          question: "Will Dan be late?",
+          subject_name: "Dan",
+          close_at: "2026-08-18T18:00:00.000Z",
+        };
+      },
+    },
+    intent: {
+      action: "complete_person_market",
+      subjectName: "Dan",
+      subjectPhone: "+12125550199",
+    },
+    binding: { groupId: GROUP_ID, userId: USER_ID },
+    now: NOW,
+    hashPhone: (value) => (value === "+12125550199" ? "h".repeat(64) : null),
+    dryRun: false,
+  });
+
+  assert.deepEqual(calls, [{
+    groupId: GROUP_ID,
+    userId: USER_ID,
+    subjectName: "Dan",
+    subjectPhoneHash: "h".repeat(64),
+  }]);
+  assert.equal(JSON.stringify(calls).includes("+12125550199"), false);
+  assert.match(result, /Subject: Dan cannot join or bet/);
+});
+
+test("can finish the prompted draft as a non-person market", async () => {
+  const calls = [];
+  const result = await executeIntent({
+    client: {
+      completeMarketDraft: async (input) => {
+        calls.push(input);
+        return {
+          display_num: 6,
+          question: "Will Bitcoin rise?",
+          subject_name: null,
+          close_at: "2026-08-18T18:00:00.000Z",
+        };
+      },
+    },
+    intent: { action: "complete_market_without_subject" },
+    binding: { groupId: GROUP_ID, userId: USER_ID },
+    now: NOW,
+    dryRun: false,
+  });
+  assert.deepEqual(calls, [{ groupId: GROUP_ID, userId: USER_ID }]);
+  assert.doesNotMatch(result, /cannot join or bet/);
+});
+
+test("creates an inline person market without storing the raw phone", async () => {
+  const calls = [];
+  await executeIntent({
+    client: {
+      openMarket: async (input) => {
+        calls.push(input);
+        return {
+          display_num: 5,
+          question: input.question,
+          subject_name: input.subjectName,
+          close_at: input.closeAt,
+        };
+      },
+    },
+    intent: {
+      action: "create_market",
+      question: "Will Dan be late?",
+      criteria: "Dan arrives after 9pm.",
+      revealAt: "2026-08-18T16:00:01.000Z",
+      closeAt: "2026-08-18T18:00:00.000Z",
+      resolveAt: "2026-08-18T18:00:01.000Z",
+      subjectName: "Dan",
+      subjectPhone: "+12125550199",
+    },
+    binding: { groupId: GROUP_ID, userId: USER_ID },
+    now: NOW,
+    hashPhone: () => "h".repeat(64),
+    dryRun: false,
+  });
+  assert.equal(calls[0].subjectPhoneHash, "h".repeat(64));
+  assert.equal(Object.hasOwn(calls[0], "subjectPhone"), false);
+});
+
 test("agent binds the iMessage identities before parsing or executing", async () => {
   const calls = [];
   const client = {
