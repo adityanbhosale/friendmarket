@@ -79,59 +79,70 @@ export async function parseNaturalLanguageIntent({
   now = new Date(),
   timezone = "America/New_York",
   markets = [],
+  pendingMarketDraft = null,
   apiKey = process.env.OPENAI_API_KEY,
   model = process.env.OPENAI_INTENT_MODEL ?? "gpt-5.4-nano",
+  intentMode = process.env.SIDEBAR_INTENT_MODE ?? "llm_first",
   fetchImpl = globalThis.fetch,
 }) {
   if (!isAgentInvocation(text)) return null;
 
   const deterministic = parseDeterministicIntent(text, { now, markets });
-  if (deterministic) return deterministic;
-
   if (!apiKey) {
+    if (deterministic) return deterministic;
     return unknown(
-      "I understood that you were talking to Sidebar, but natural-language fallback is not configured yet.",
+      "i didn't get that — try saying it another way",
     );
   }
+  if (intentMode === "deterministic_first" && deterministic) return deterministic;
 
-  const response = await fetchImpl("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      store: false,
-      input: [
-        {
-          role: "system",
-          content: buildSystemPrompt({ now, timezone, markets }),
-        },
-        { role: "user", content: stripBotPrefix(text) },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "sidebar_market_intent",
-          strict: true,
-          schema: INTENT_SCHEMA,
-        },
+  try {
+    const response = await fetchImpl("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
-      max_output_tokens: 500,
-    }),
-  });
+      body: JSON.stringify({
+        model,
+        store: false,
+        input: [
+          {
+            role: "developer",
+            content: buildSystemPrompt({ now, timezone, markets, pendingMarketDraft }),
+          },
+          { role: "user", content: stripBotPrefix(text) },
+        ],
+        text: {
+          verbosity: "low",
+          format: {
+            type: "json_schema",
+            name: "sidebar_market_intent",
+            strict: true,
+            schema: INTENT_SCHEMA,
+          },
+        },
+        max_output_tokens: 350,
+      }),
+    });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`OpenAI intent parsing failed (${response.status}): ${body.slice(0, 300)}`);
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`OpenAI intent parsing failed (${response.status}): ${body.slice(0, 300)}`);
+    }
+
+    const payload = await response.json();
+    const outputText = extractOutputText(payload);
+    if (!outputText) throw new Error("OpenAI returned no structured intent output.");
+
+    const modeled = validateModelIntent(JSON.parse(outputText));
+    if (modeled.action === "unknown" && deterministic) return deterministic;
+    return modeled;
+  } catch {
+    // An obvious command should still work during a transient model outage.
+    if (deterministic) return deterministic;
+    return unknown("i'm having trouble reading that — try again in a sec");
   }
-
-  const payload = await response.json();
-  const outputText = extractOutputText(payload);
-  if (!outputText) throw new Error("OpenAI returned no structured intent output.");
-
-  return validateModelIntent(JSON.parse(outputText));
 }
 
 export const INTENT_SCHEMA = {
@@ -449,7 +460,7 @@ function unknown(clarification) {
   return intent("unknown", { clarification });
 }
 
-function buildSystemPrompt({ now, timezone, markets }) {
+function buildSystemPrompt({ now, timezone, markets, pendingMarketDraft }) {
   const marketContext = markets
     .slice(0, 20)
     .map((market) => `#${market.display_num}: ${market.question}`)
@@ -457,15 +468,21 @@ function buildSystemPrompt({ now, timezone, markets }) {
   return [
     "Convert one Sidebar group-chat request into exactly one structured market action.",
     "Do not execute anything and do not invent IDs, amounts, outcomes, or times.",
-    "Use unknown with a short clarification when the request is ambiguous or incomplete.",
-    "create_market needs a question and closeAt; preserve the user's meaning. criteria may summarize the stated resolution condition. If it is about a named person, put their name in subjectName and copy a supplied phone number into subjectPhone; never invent one.",
+    "For clear market creation intent, always return create_market even when fields are missing. Leave missing fields null so the app can ask one follow-up at a time.",
+    "If a pending market draft is shown, treat the user's message as a possible answer to its missing field and merge only information the user actually supplied.",
+    "For other ambiguous requests, use unknown with one short clarification question.",
+    "create_market preserves the user's question and close time. criteria may summarize a stated resolution condition. If it is about a named person, put their name in subjectName and copy a supplied phone number into subjectPhone; never invent one.",
     "complete_person_market supplies the name and phone requested for the caller's pending market. complete_market_without_subject confirms that a pending market is not about a person.",
     "place_bet needs marketNumber, side yes/no, and a positive whole-number amount.",
     "join_market and leave_market need marketNumber.",
     "resolve_market needs marketNumber and side yes/no/void.",
+    "Clarification style: casual group-chat voice, lowercase, under 90 characters, no greeting, apology, filler, or sign-off.",
     `Current time: ${now.toISOString()}`,
     `Group timezone: ${timezone}`,
     marketContext ? `Known markets:\n${marketContext}` : "Known markets: none",
+    pendingMarketDraft
+      ? `Pending market draft:\n${JSON.stringify(pendingMarketDraft)}`
+      : "Pending market draft: none",
   ].join("\n");
 }
 
@@ -486,7 +503,10 @@ function validateModelIntent(value) {
     throw new Error("OpenAI returned an unsupported Sidebar action.");
   }
   if (typeof value.confidence !== "number" || value.confidence < 0.8) {
-    return unknown(value.clarification || "Could you say that another way?");
+    return unknown(value.clarification || "can you say that another way?");
   }
-  return { ...value, source: "openai" };
+  const clarification = value.clarification
+    ? String(value.clarification).trim().slice(0, 140)
+    : null;
+  return { ...value, clarification, source: "openai" };
 }

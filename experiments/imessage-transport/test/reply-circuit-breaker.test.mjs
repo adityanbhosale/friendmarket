@@ -22,3 +22,10 @@ test("caps total replies inside the safety window", () => {
   assert.equal(breaker.allow("second"), true);
   assert.equal(breaker.allow("third"), false);
 });
+
+test("accepts or rejects a multi-bubble reply atomically", () => {
+  const breaker = createReplyCircuitBreaker({ maxReplies: 3 });
+  assert.equal(breaker.allowMany(["one", "two"]), true);
+  assert.equal(breaker.allowMany(["three", "four"]), false);
+  assert.equal(breaker.allow("three"), true);
+});

@@ -222,23 +222,33 @@ Common phrasing is parsed locally and costs nothing:
 @sidebar, resolve Dan being late as yes
 ```
 
-Person markets are opened on the web, where the creator supplies the subject's
-name and phone number privately. The database stores only a keyed phone hash
-and prevents the matching subject from joining or betting while leaving the
-market visible to them.
+For person markets, Sidebar asks for the subject's name and phone number when
+either is missing. The agent hashes the phone immediately; the database stores
+only that keyed hash and prevents the matching subject from joining or betting
+while leaving the market visible to them.
 
 Every request must begin with `@sidebar`. Even an
 otherwise clear market instruction is ignored without that prefix, so ordinary
 group conversation cannot accidentally invoke parsing, an API call, or a
 database action.
 
-An OpenAI model is an optional fallback only for explicit Sidebar requests that
-the local parser cannot understand. To enable it, set `OPENAI_API_KEY` in the
-root `.env.local` or export it in the launching shell. Do not put a key in this
-repository or a chat message. `OPENAI_INTENT_MODEL` defaults to
-`gpt-5.4-nano`. Ordinary group chatter is discarded before any API call, and
-the model returns a strict structured intent; application validation and
-Supabase RPCs remain the authority for every mutation.
+When `OPENAI_API_KEY` is configured, every explicit `@sidebar` command goes to
+the OpenAI intent parser first. Ordinary group chatter is still discarded
+before any API call. The model returns a strict structured intent; application
+validation and Supabase RPCs remain the authority for every mutation. If the
+model is unavailable, obvious commands fall back to the local parser.
+
+Set the key in the root `.env.local` or export it in the launching shell. Do
+not put a key in this repository or a chat message. `OPENAI_INTENT_MODEL`
+defaults to `gpt-5.4-nano`. Set `SIDEBAR_INTENT_MODE=deterministic_first` only
+if reducing API calls matters more than natural-language coverage.
+
+Incomplete market creation is conversational. Sidebar keeps a group-and-member
+scoped draft for 15 minutes and asks one short question at a time for the
+market question, betting close time, or subject identity. The raw subject phone
+number is never kept in the draft. Replies are split into short iMessage
+bubbles and sent in order; `SIDEBAR_REPLY_DELAY_MS` controls the pause between
+bubbles and defaults to 350 milliseconds.
 
 ### 3. Verify without writes, then run
 

@@ -10,23 +10,25 @@ export function createReplyCircuitBreaker({
 } = {}) {
   const replies = [];
 
+  const allowMany = (texts) => {
+    const timestamp = now();
+    while (replies[0]?.timestamp <= timestamp - windowMs) replies.shift();
+
+    const candidates = texts.map((text) => String(text));
+    if (replies.length + candidates.length > maxReplies) return false;
+    const recent = new Set(
+      replies
+        .filter((reply) => reply.timestamp > timestamp - identicalCooldownMs)
+        .map((reply) => reply.text),
+    );
+    if (candidates.some((text) => recent.has(text))) return false;
+
+    for (const text of candidates) replies.push({ text, timestamp });
+    return true;
+  };
+
   return {
-    allow(text) {
-      const timestamp = now();
-      while (replies[0]?.timestamp <= timestamp - windowMs) replies.shift();
-
-      if (replies.length >= maxReplies) return false;
-      if (
-        replies.some(
-          (reply) =>
-            reply.text === text && reply.timestamp > timestamp - identicalCooldownMs,
-        )
-      ) {
-        return false;
-      }
-
-      replies.push({ text, timestamp });
-      return true;
-    },
+    allow: (text) => allowMany([text]),
+    allowMany,
   };
 }

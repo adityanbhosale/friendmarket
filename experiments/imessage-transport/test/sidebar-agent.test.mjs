@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createSidebarAgent, executeIntent } from "../src/sidebar-agent.mjs";
+import {
+  createPendingMarketDraftStore,
+  createSidebarAgent,
+  executeIntent,
+} from "../src/sidebar-agent.mjs";
 import { SidebarDbError } from "../src/sidebar-client.mjs";
 
 const NOW = new Date("2026-08-18T16:00:00.000Z");
@@ -61,8 +65,8 @@ test("executes a parsed bet through the deterministic Sidebar client", async () 
   assert.deepEqual(calls, [
     { groupId: GROUP_ID, userId: USER_ID, marketNumber: 3, side: "yes", amount: 40 },
   ]);
-  assert.match(result, /Bet placed: 40 points on Yes/);
-  assert.match(result, /Yes 75% \(75\).*Pot 100 points/);
+  assert.match(result, /got it — 40 on yes for #3/);
+  assert.match(result, /yes 75% \(75\).*pot 100/);
 });
 
 test("dry-run write requests never call a mutation", async () => {
@@ -75,7 +79,7 @@ test("dry-run write requests never call a mutation", async () => {
     dryRun: true,
   });
   assert.equal(called, false);
-  assert.equal(result, "Would bet 10 points on No in market #3.");
+  assert.equal(result, "would put 10 on no for #3");
 });
 
 test("holds a likely person market and prompts for the subject phone", async () => {
@@ -100,7 +104,7 @@ test("holds a likely person market and prompts for the subject phone", async () 
   assert.equal(calls.length, 1);
   assert.equal(calls[0].subjectName, "Dan");
   assert.equal(calls[0].expiresAt, "2026-08-18T16:15:00.000Z");
-  assert.match(result, /phone number should be blocked/i);
+  assert.match(result, /what's Dan's phone number/i);
   assert.match(result, /@sidebar subject Dan/);
   assert.match(result, /@sidebar no subject/);
 });
@@ -137,7 +141,7 @@ test("finishes a pending person market with only a one-way phone hash", async ()
     subjectPhoneHash: "h".repeat(64),
   }]);
   assert.equal(JSON.stringify(calls).includes("+12125550199"), false);
-  assert.match(result, /Subject: Dan cannot join or bet/);
+  assert.match(result, /Dan can watch but can't bet/);
 });
 
 test("can finish the prompted draft as a non-person market", async () => {
@@ -237,7 +241,7 @@ test("unbound identities cannot reach the database", async () => {
     resolveBinding: () => ({ status: "unbound_sender", groupId: GROUP_ID }),
   });
   const result = await agent({ conversationId: "chat", senderId: "sender", text: "@sidebar help" });
-  assert.match(result, /not connected.*@sidebar, start/);
+  assert.match(result, /you aren't.*@sidebar start/s);
 });
 
 test("Sidebar start issues a setup link before any market access", async () => {
@@ -262,8 +266,8 @@ test("Sidebar start issues a setup link before any market access", async () => {
   assert.deepEqual(setupCalls, [
     { conversationId: "chat-1", senderId: "+15550000001", groupId: null },
   ]);
-  assert.match(result, /sent you a one-time Sidebar setup link directly/);
-  assert.match(result, /expires in 15 minutes/);
+  assert.match(result, /sent you a setup link privately/);
+  assert.match(result, /expires in 15 min/);
 });
 
 test("Sidebar start attaches an unbound sender to the conversation's group", async () => {
@@ -305,7 +309,7 @@ test("dry-run Sidebar start does not persist a setup token", async () => {
   });
   const result = await agent({ conversationId: "chat-1", senderId: "sender-1", text: "@sidebar start" });
   assert.equal(issued, false);
-  assert.match(result, /Would create/);
+  assert.match(result, /would send you a private setup link/);
 });
 
 test("unprefixed text is ignored before binding or database access", async () => {
@@ -338,7 +342,7 @@ test("formats final payouts after deterministic resolution", async () => {
     now: NOW,
     dryRun: false,
   });
-  assert.equal(result, "Resolved market #3: Yes.\nFinal payouts: Adam 160 · Brent 40");
+  assert.equal(result, "#3 resolved yes\npayouts: Adam 160 · Brent 40");
 });
 
 test("joins a group-scoped market before betting", async () => {
@@ -351,7 +355,7 @@ test("joins a group-scoped market before betting", async () => {
     dryRun: false,
   });
   assert.deepEqual(calls, [{ groupId: GROUP_ID, userId: USER_ID, marketNumber: 3 }]);
-  assert.equal(result, "Joined market #3. You can now place a bet.");
+  assert.equal(result, "joined #3\nyou can bet now");
 });
 
 test("turns an asynchronous database rejection into one user-facing reply", async () => {
@@ -377,5 +381,76 @@ test("turns an asynchronous database rejection into one user-facing reply", asyn
     senderId: "sender-1",
     text: "@sidebar, resolve Dan being late as void",
   });
-  assert.equal(reply, "I couldn't complete that: market has not closed yet");
+  assert.equal(reply, "couldn't do that — market has not closed yet");
+});
+
+test("keeps an incomplete market draft and fills it over the next invoked message", async () => {
+  const opened = [];
+  const seenDrafts = [];
+  let turn = 0;
+  const client = {
+    requireMembership: async () => undefined,
+    listMarkets: async () => [],
+    openMarket: async (input) => {
+      opened.push(input);
+      return {
+        display_num: 7,
+        question: input.question,
+        subject_name: null,
+        close_at: input.closeAt,
+      };
+    },
+  };
+  const agent = createSidebarAgent({
+    client,
+    resolveBinding: async () => ({ status: "bound", groupId: GROUP_ID, userId: USER_ID }),
+    parseIntent: async ({ pendingMarketDraft }) => {
+      seenDrafts.push(pendingMarketDraft);
+      turn += 1;
+      if (turn === 1) {
+        return {
+          action: "create_market",
+          question: "Will Bitcoin be above 70k?",
+          closeAt: null,
+        };
+      }
+      return {
+        action: "create_market",
+        closeAt: "2026-08-18T18:00:00.000Z",
+      };
+    },
+    now: () => NOW,
+  });
+
+  const first = await agent({
+    conversationId: "chat-1",
+    senderId: "sender-1",
+    text: "@sidebar make a bitcoin market",
+  });
+  assert.match(first, /when should betting close/);
+  assert.equal(opened.length, 0);
+
+  const second = await agent({
+    conversationId: "chat-1",
+    senderId: "sender-1",
+    text: "@sidebar in 2 hours",
+  });
+  assert.equal(seenDrafts[0], null);
+  assert.equal(seenDrafts[1].question, "Will Bitcoin be above 70k?");
+  assert.equal(opened.length, 1);
+  assert.match(second, /market #7 is live/);
+});
+
+test("pending market drafts expire and stay isolated by group and member", () => {
+  let time = NOW.getTime();
+  const store = createPendingMarketDraftStore({
+    now: () => new Date(time),
+    ttlMs: 1_000,
+  });
+  store.set(GROUP_ID, USER_ID, { question: "Will Dan be late?" });
+  assert.equal(store.get(GROUP_ID, "another-user"), null);
+  assert.equal(store.get("another-group", USER_ID), null);
+  assert.equal(store.get(GROUP_ID, USER_ID).question, "Will Dan be late?");
+  time += 1_001;
+  assert.equal(store.get(GROUP_ID, USER_ID), null);
 });

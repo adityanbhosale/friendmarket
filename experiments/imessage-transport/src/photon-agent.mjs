@@ -18,10 +18,16 @@ import {
 } from "./self-test-routing.mjs";
 import { startSelfMessagePolling } from "./self-test-poller.mjs";
 import { createReplyCircuitBreaker } from "./reply-circuit-breaker.mjs";
+import {
+  configuredReplyDelay,
+  replyMessages,
+  sendReplySequence,
+} from "./reply-sequence.mjs";
 import { fingerprint, normalizePhotonMessage } from "./transport-core.mjs";
 import { createDirectOnboardingHandler } from "./web-onboarding.mjs";
 
 const dryRun = process.env.SIDEBAR_AGENT_DRY_RUN === "1";
+const replyDelayMs = configuredReplyDelay(process.env.SIDEBAR_REPLY_DELAY_MS);
 const seen = new Set();
 let sdk;
 
@@ -173,8 +179,10 @@ async function handleEnvelope(envelope, agent, replyCircuitBreaker) {
   try {
     const reply = await agent(envelope);
     if (!reply) return;
+    const messages = replyMessages(reply);
+    if (messages.length === 0) return;
     if (!dryRun) {
-      if (!replyCircuitBreaker.allow(reply)) {
+      if (!replyCircuitBreaker.allowMany(messages)) {
         writeStatus({
           status: "reply_circuit_open",
           eventHash: fingerprint(envelope.eventId),
@@ -182,13 +190,18 @@ async function handleEnvelope(envelope, agent, replyCircuitBreaker) {
         });
         return;
       }
-      await sdk.send({ to: envelope.conversationId, text: reply });
+      await sendReplySequence({
+        reply: messages,
+        delayMs: replyDelayMs,
+        send: (text) => sdk.send({ to: envelope.conversationId, text }),
+      });
     }
     writeStatus({
       status: dryRun ? "would_reply" : "replied",
       eventHash: fingerprint(envelope.eventId),
       conversationHash: fingerprint(envelope.conversationId),
       senderHash: fingerprint(envelope.senderId),
+      messageCount: messages.length,
     });
   } catch (error) {
     seen.delete(envelope.eventId);

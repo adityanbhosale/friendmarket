@@ -15,6 +15,7 @@ export function createSidebarAgent({
   timezone = process.env.SIDEBAR_GROUP_TIMEZONE ?? "America/New_York",
   issueSetupLink,
   hashPhone = (value) => deriveRegisteredPhoneHash(value, process.env.SESSION_SECRET),
+  pendingMarketDrafts = createPendingMarketDraftStore({ now }),
   dryRun = false,
 } = {}) {
   if (!client || !resolveBinding) throw new Error("Sidebar agent needs a client and binding resolver.");
@@ -31,13 +32,13 @@ export function createSidebarAgent({
 
     if (isStartRequest(envelope.text)) {
       if (binding.status === "bound") {
-        return "This conversation and your iMessage identity are already connected to Sidebar. Send “@sidebar, help” to see what I can do.";
+        return "you're already connected\nsend @sidebar help if you need me";
       }
       if (!issueSetupLink) {
-        return "iMessage setup is not configured on this Sidebar agent yet.";
+        return "setup isn't configured on this agent yet";
       }
       if (dryRun) {
-        return "Would create a private, 15-minute Sidebar setup link for this iMessage identity.";
+        return "would send you a private setup link";
       }
       try {
         await issueSetupLink({
@@ -45,27 +46,30 @@ export function createSidebarAgent({
           senderId: envelope.senderId,
           groupId: binding.status === "unbound_sender" ? binding.groupId : null,
         });
-        return "I sent you a one-time Sidebar setup link directly. It expires in 15 minutes.";
+        return "sent you a setup link privately\nit expires in 15 min";
       } catch (error) {
-        return `I couldn't start setup: ${safeErrorMessage(error)}`;
+        return `couldn't start setup — ${safeErrorMessage(error)}`;
       }
     }
 
     if (binding.status === "unbound_group") {
-      return "This iMessage group is not connected to Sidebar. Send “@sidebar, start” to create or connect a group.";
+      return "this chat isn't connected yet\nsend @sidebar start";
     }
     if (binding.status === "unbound_sender") {
-      return "I recognize this group, but your iMessage identity is not connected. Send “@sidebar, start” for a private setup link.";
+      return "this chat is connected, but you aren't\nsend @sidebar start";
     }
 
     try {
       await client.requireMembership(binding.groupId, binding.userId);
       const marketRows = await client.listMarkets(binding.groupId, binding.userId);
+      const pendingMarketDraft = pendingMarketDrafts.get(binding.groupId, binding.userId);
+      const requestTime = now();
       const intent = await parseIntent({
         text: envelope.text,
-        now: now(),
+        now: requestTime,
         timezone,
         markets: marketRows.map(({ market }) => market),
+        pendingMarketDraft: publicDraftContext(pendingMarketDraft),
       });
       if (!intent) return null;
       return await executeIntent({
@@ -73,14 +77,19 @@ export function createSidebarAgent({
         intent,
         binding,
         marketRows,
-        now: now(),
+        pendingMarketDraft,
+        savePendingMarketDraft: (draft) =>
+          pendingMarketDrafts.set(binding.groupId, binding.userId, draft),
+        clearPendingMarketDraft: () =>
+          pendingMarketDrafts.delete(binding.groupId, binding.userId),
+        now: requestTime,
         timezone,
         hashPhone,
         dryRun,
       });
     } catch (error) {
       const message = safeErrorMessage(error);
-      return `I couldn't complete that: ${message}`;
+      return `couldn't do that — ${message}`;
     }
   };
 }
@@ -90,6 +99,9 @@ export async function executeIntent({
   intent,
   binding,
   marketRows = [],
+  pendingMarketDraft = null,
+  savePendingMarketDraft = () => undefined,
+  clearPendingMarketDraft = () => undefined,
   now,
   timezone = "America/New_York",
   hashPhone,
@@ -98,11 +110,9 @@ export async function executeIntent({
   switch (intent.action) {
     case "help":
       return [
-        "I can create and list markets, show odds/pot/time, place Yes or No bets, and resolve markets.",
-        "Join a market before betting. For a person market, include their name and phone or I'll ask for them privately in the command flow.",
-        "Try: “@sidebar, create a market: Will Dan be late? closes in 2 hours”",
-        "Then: “@sidebar subject Dan +12125550199”",
-        "Or: “@sidebar, put 40 points on Dan being late”",
+        "i can make markets, show odds, take bets, and resolve outcomes",
+        "try: @sidebar make a market on whether dan is late tonight",
+        "i'll ask for anything missing",
       ].join("\n");
     case "list_markets":
       return formatMarketList(marketRows, now);
@@ -113,11 +123,22 @@ export async function executeIntent({
         intent.marketNumber,
         binding.userId,
       );
-      if (!result) return `Market #${intent.marketNumber} does not exist in this group.`;
+      if (!result) return `can't find market #${intent.marketNumber} in this group`;
       return formatMarket(result, now, timezone);
     }
     case "create_market": {
-      const input = validateCreateIntent(intent, now);
+      const draft = mergeCreateDraft({
+        pending: pendingMarketDraft,
+        intent,
+        now,
+        hashPhone,
+      });
+      const missingReply = missingCreateReply(draft, now);
+      if (missingReply) {
+        savePendingMarketDraft(draft);
+        return missingReply;
+      }
+      const input = validateCreateIntent(draft, now);
       const marketInput = {
         question: input.question,
         criteria: input.criteria,
@@ -126,7 +147,7 @@ export async function executeIntent({
         resolveAt: input.resolveAt,
         subjectName: input.subjectName,
       };
-      if (input.subjectName && !input.subjectPhone) {
+      if (input.subjectName && !draft.subjectPhoneHash) {
         if (!dryRun) {
           await client.stageMarketDraft({
             groupId: binding.groupId,
@@ -135,31 +156,30 @@ export async function executeIntent({
             expiresAt: new Date(now.getTime() + 15 * 60_000).toISOString(),
           });
         }
+        clearPendingMarketDraft();
         return [
-          `This looks like a market about ${input.subjectName}. What phone number should be blocked from betting?`,
-          `Reply “@sidebar subject ${input.subjectName} +12125550199”. If it isn't about a person, reply “@sidebar no subject”.`,
-          "This draft expires in 15 minutes.",
+          `what's ${input.subjectName}'s phone number?`,
+          `reply: @sidebar subject ${input.subjectName} +12125550199`,
+          "not about a person? say @sidebar no subject",
         ].join("\n");
       }
-      const subjectPhoneHash = input.subjectPhone
-        ? requirePhoneHash(hashPhone, input.subjectPhone)
-        : null;
-      if (dryRun) return `Would create market: ${input.question}`;
+      if (dryRun) return `would make this market\n${input.question}`;
       const market = await client.openMarket({
         groupId: binding.groupId,
         userId: binding.userId,
         ...marketInput,
-        subjectPhoneHash,
+        subjectPhoneHash: draft.subjectPhoneHash,
       });
+      clearPendingMarketDraft();
       return formatCreatedMarket(market, timezone);
     }
     case "complete_person_market": {
       const subjectName = String(intent.subjectName ?? "").trim();
       if (!subjectName || subjectName.length > 40) {
-        throw new Error("Reply with the person's name and phone number.");
+        throw new Error("send the person's name and phone number");
       }
       const subjectPhoneHash = requirePhoneHash(hashPhone, intent.subjectPhone);
-      if (dryRun) return `Would finish the pending market about ${subjectName}.`;
+      if (dryRun) return `would finish the market about ${subjectName}`;
       const market = await client.completeMarketDraft({
         groupId: binding.groupId,
         userId: binding.userId,
@@ -169,7 +189,7 @@ export async function executeIntent({
       return formatCreatedMarket(market, timezone);
     }
     case "complete_market_without_subject": {
-      if (dryRun) return "Would finish the pending market without a person restriction.";
+      if (dryRun) return "would finish the market without a blocked subject";
       const market = await client.completeMarketDraft({
         groupId: binding.groupId,
         userId: binding.userId,
@@ -178,32 +198,32 @@ export async function executeIntent({
     }
     case "join_market": {
       requirePositiveInteger(intent.marketNumber, "market number");
-      if (dryRun) return `Would join market #${intent.marketNumber}.`;
+      if (dryRun) return `would join #${intent.marketNumber}`;
       await client.joinMarket({
         groupId: binding.groupId,
         userId: binding.userId,
         marketNumber: intent.marketNumber,
       });
-      return `Joined market #${intent.marketNumber}. You can now place a bet.`;
+      return `joined #${intent.marketNumber}\nyou can bet now`;
     }
     case "leave_market": {
       requirePositiveInteger(intent.marketNumber, "market number");
-      if (dryRun) return `Would leave market #${intent.marketNumber}.`;
+      if (dryRun) return `would leave #${intent.marketNumber}`;
       await client.leaveMarket({
         groupId: binding.groupId,
         userId: binding.userId,
         marketNumber: intent.marketNumber,
       });
-      return `Left market #${intent.marketNumber}.`;
+      return `left #${intent.marketNumber}`;
     }
     case "place_bet": {
       requirePositiveInteger(intent.marketNumber, "market number");
       requirePositiveInteger(intent.amount, "bet amount");
       if (!new Set(["yes", "no"]).has(intent.side)) {
-        throw new Error("Choose Yes or No.");
+        throw new Error("pick yes or no");
       }
       if (dryRun) {
-        return `Would bet ${intent.amount} points on ${titleCase(intent.side)} in market #${intent.marketNumber}.`;
+        return `would put ${intent.amount} on ${intent.side} for #${intent.marketNumber}`;
       }
       const result = await client.placeBet({
         groupId: binding.groupId,
@@ -212,14 +232,14 @@ export async function executeIntent({
         side: intent.side,
         amount: intent.amount,
       });
-      return `Bet placed: ${intent.amount} points on ${titleCase(intent.side)} in market #${intent.marketNumber}.\n${formatOdds(result)}`;
+      return `got it — ${intent.amount} on ${intent.side} for #${intent.marketNumber}\n${formatOdds(result)}`;
     }
     case "resolve_market": {
       requirePositiveInteger(intent.marketNumber, "market number");
       if (!new Set(["yes", "no", "void"]).has(intent.side)) {
-        throw new Error("Resolve the market as Yes, No, or Void.");
+        throw new Error("pick yes, no, or void");
       }
-      if (dryRun) return `Would resolve market #${intent.marketNumber} as ${titleCase(intent.side)}.`;
+      if (dryRun) return `would resolve #${intent.marketNumber} as ${intent.side}`;
       const resolved = await client.resolveMarket({
         groupId: binding.groupId,
         userId: binding.userId,
@@ -229,7 +249,7 @@ export async function executeIntent({
       return formatResolution(intent.marketNumber, intent.side, resolved);
     }
     case "unknown":
-      return intent.clarification || "Could you say what you want me to do with the market?";
+      return intent.clarification || "what do you want me to do?";
     default:
       throw new Error("That Sidebar action is not supported.");
   }
@@ -253,12 +273,8 @@ function validateCreateIntent(intent, now) {
   ).trim();
   if (criteria.length > 500) throw new Error("Resolution criteria must be 500 characters or fewer.");
   const subjectName = intent.subjectName ? String(intent.subjectName).trim() : null;
-  const subjectPhone = intent.subjectPhone ? String(intent.subjectPhone).trim() : null;
   if (subjectName && subjectName.length > 40) {
     throw new Error("The market subject's name must be 40 characters or fewer.");
-  }
-  if (subjectPhone && !subjectName) {
-    throw new Error("A person market needs both the subject's name and phone number.");
   }
   return {
     question,
@@ -267,7 +283,79 @@ function validateCreateIntent(intent, now) {
     closeAt: closeAt.toISOString(),
     resolveAt: resolveAt.toISOString(),
     subjectName,
-    subjectPhone,
+  };
+}
+
+function mergeCreateDraft({ pending, intent, now, hashPhone }) {
+  const next = { ...(pending ?? {}) };
+  for (const field of [
+    "question",
+    "criteria",
+    "revealAt",
+    "closeAt",
+    "resolveAt",
+    "subjectName",
+  ]) {
+    if (intent[field] != null && String(intent[field]).trim()) {
+      next[field] = String(intent[field]).trim();
+    }
+  }
+  if (intent.subjectPhone) {
+    next.subjectPhoneHash = requirePhoneHash(hashPhone, intent.subjectPhone);
+  }
+  next.updatedAt = now.toISOString();
+  return next;
+}
+
+function missingCreateReply(draft, now) {
+  if (!draft.question) {
+    return "what should the market ask?\nex: will dan make it by 10?";
+  }
+  if (!draft.closeAt || Number.isNaN(new Date(draft.closeAt).valueOf())) {
+    delete draft.closeAt;
+    return "when should betting close?\nex: tonight at 11 or in 2 hours";
+  }
+  if (new Date(draft.closeAt) <= now) {
+    delete draft.closeAt;
+    return "that time already passed — when should betting close?";
+  }
+  if (draft.subjectPhoneHash && !draft.subjectName) {
+    return "who's this market about?";
+  }
+  return null;
+}
+
+function publicDraftContext(draft) {
+  if (!draft) return null;
+  const { subjectPhoneHash, ...safe } = draft;
+  return { ...safe, hasSubjectPhone: Boolean(subjectPhoneHash) };
+}
+
+export function createPendingMarketDraftStore({
+  now = () => new Date(),
+  ttlMs = 15 * 60_000,
+} = {}) {
+  const drafts = new Map();
+  const key = (groupId, userId) => `${groupId}:${userId}`;
+  return {
+    get(groupId, userId) {
+      const entry = drafts.get(key(groupId, userId));
+      if (!entry) return null;
+      if (entry.expiresAt <= now().getTime()) {
+        drafts.delete(key(groupId, userId));
+        return null;
+      }
+      return entry.draft;
+    },
+    set(groupId, userId, draft) {
+      drafts.set(key(groupId, userId), {
+        draft: { ...draft },
+        expiresAt: now().getTime() + ttlMs,
+      });
+    },
+    delete(groupId, userId) {
+      drafts.delete(key(groupId, userId));
+    },
   };
 }
 
@@ -282,65 +370,71 @@ function requirePhoneHash(hashPhone, value) {
 
 function formatCreatedMarket(market, timezone) {
   if (!market) throw new Error("The market was created but could not be loaded.");
-  const subject = market.subject_name ? `\nSubject: ${market.subject_name} cannot join or bet.` : "";
-  return `Created market #${market.display_num}: ${market.question}${subject}\nBetting closes ${formatInstant(market.close_at, timezone)}.`;
+  const lines = [
+    `market #${market.display_num} is live`,
+    market.question,
+    `betting closes ${formatInstant(market.close_at, timezone)}`,
+  ];
+  if (market.subject_name) lines.push(`${market.subject_name} can watch but can't bet`);
+  return lines.join("\n");
 }
 
 function formatMarketList(rows, now) {
-  if (rows.length === 0) return "There are no markets in this Sidebar group yet.";
-  return rows
+  if (rows.length === 0) return "no markets here yet";
+  const markets = rows
     .slice(0, 10)
     .map(({ market, totals, adjudicatorName, joined }) => {
       const state = marketState(market, now);
-      const pot = totals?.revealed ? ` · ${totals.total_pool ?? 0} point pot` : " · pot sealed";
-      const participation = joined ? "joined" : "not joined";
-      return `#${market.display_num} ${market.question} — ${titleCase(state)} · ${participation}${pot} · adjudicator ${adjudicatorName}`;
+      const pot = totals?.revealed ? ` · pot ${totals.total_pool ?? 0}` : " · pot sealed";
+      const participation = joined ? "in" : "not in";
+      return `#${market.display_num} ${market.question} — ${state} · ${participation}${pot} · judge: ${adjudicatorName}`;
     })
     .join("\n");
+  return `here's what this group has\n${markets}`;
 }
 
 function formatMarket(result, now, timezone) {
   const { market, totals } = result;
   const lines = [
     `#${market.display_num} ${market.question}`,
-    `${titleCase(marketState(market, now))} · ${timeDescription(market, now, timezone)}`,
-    `Adjudicator: ${result.adjudicatorName}`,
+    `${marketState(market, now)} · ${timeDescription(market, now, timezone)}`,
+    `judge: ${result.adjudicatorName}`,
     formatOdds(result),
   ];
   const myStake = result.myStakes.reduce((sum, stake) => sum + stake.amount, 0);
-  if (myStake > 0) lines.push(`Your stake: ${myStake} points`);
-  if (totals?.revealed) lines.push(`Participants: ${totals.participants}`);
+  if (myStake > 0) lines.push(`you have ${myStake} points in`);
+  if (totals?.revealed) lines.push(`${totals.participants} people in`);
   if (market.resolved_at) {
     lines.push(
       result.payouts?.length
-        ? `Final payouts: ${result.payouts
+        ? `payouts: ${result.payouts
             .map((payout) => `${payout.name} ${payout.amount}`)
             .join(" · ")}`
-        : "No payouts were due.",
+        : "no payouts",
     );
   }
   return lines.join("\n");
 }
 
 function formatOdds({ sides, pools, totals }) {
-  if (!totals?.revealed) return "Odds and stakes are sealed until the reveal time.";
+  if (!totals?.revealed) return "odds are sealed until reveal";
   const total = totals.total_pool ?? 0;
   const poolBySide = new Map(pools.map((pool) => [pool.side_id, pool.pool ?? 0]));
   const sideText = sides.map((side) => {
     const pool = poolBySide.get(side.id) ?? 0;
     const probability = total > 0 ? Math.round((pool / total) * 100) : 0;
-    return `${side.label} ${probability}% (${pool})`;
+    return `${side.label.toLowerCase()} ${probability}% (${pool})`;
   });
-  return `${sideText.join(" · ")} · Pot ${total} points`;
+  return `${sideText.join(" · ")} · pot ${total}`;
 }
 
 function formatResolution(marketNumber, side, resolved) {
-  const outcome = resolved.result === "resolved" ? titleCase(side) : "Void";
-  const lines = [`Resolved market #${marketNumber}: ${outcome}.`];
-  if (resolved.payouts.length === 0) lines.push("No payouts were due.");
+  const outcome = resolved.result === "resolved" ? side : "void";
+  const lines = [`#${marketNumber} resolved ${outcome}`];
+  if (resolved.payouts.length === 0) lines.push("no payouts");
   else {
     lines.push(
-      `Final payouts: ${resolved.payouts
+      `payouts: ${resolved.payouts
         .map((payout) => `${payout.name} ${payout.amount}`)
         .join(" · ")}`,
     );
@@ -382,7 +476,7 @@ function formatInstant(value, timezone) {
 }
 
 function requirePositiveInteger(value, label) {
-  if (!Number.isInteger(value) || value <= 0) throw new Error(`Enter a valid ${label}.`);
+  if (!Number.isInteger(value) || value <= 0) throw new Error(`send a valid ${label}`);
 }
 
 function validDate(value, label) {
@@ -391,16 +485,12 @@ function validDate(value, label) {
   return date;
 }
 
-function titleCase(value) {
-  return `${value[0].toUpperCase()}${value.slice(1)}`;
-}
-
 function safeErrorMessage(error) {
   if (error instanceof SidebarDbError) {
-    return error.publicMessage || "the Sidebar database rejected the request.";
+    return error.publicMessage || "the database rejected it";
   }
   if (error instanceof Error) return error.message;
-  return "an unexpected error occurred.";
+  return "something unexpected happened";
 }
 
 function assertTimeZone(timezone) {

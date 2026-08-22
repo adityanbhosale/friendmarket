@@ -247,17 +247,96 @@ test("uses strict structured output for ambiguous invoked language", async () =>
   });
 
   assert.equal(requestBody.store, false);
+  assert.equal(requestBody.input[0].role, "developer");
+  assert.equal(requestBody.text.verbosity, "low");
   assert.deepEqual(requestBody.text.format.schema, INTENT_SCHEMA);
   assert.equal(requestBody.text.format.strict, true);
   assert.equal(result.action, "place_bet");
   assert.equal(result.source, "openai");
 });
 
-test("returns a clarification when OpenAI fallback is not configured", async () => {
+test("returns a short clarification when OpenAI is not configured", async () => {
   const result = await parseNaturalLanguageIntent({
     text: "@sidebar do the thing with market four",
     apiKey: "",
   });
   assert.equal(result.action, "unknown");
-  assert.match(result.clarification, /not configured/i);
+  assert.equal(result.clarification, "i didn't get that — try saying it another way");
 });
+
+test("uses the LLM first for every invoked command when a key is configured", async () => {
+  let called = false;
+  const result = await parseNaturalLanguageIntent({
+    text: "@sidebar show markets",
+    apiKey: "test-key",
+    fetchImpl: async () => {
+      called = true;
+      return modelResponse({ action: "list_markets", confidence: 0.99 });
+    },
+  });
+  assert.equal(called, true);
+  assert.equal(result.action, "list_markets");
+  assert.equal(result.source, "openai");
+});
+
+test("falls back to a deterministic intent during an OpenAI outage", async () => {
+  const result = await parseNaturalLanguageIntent({
+    text: "@sidebar show markets",
+    apiKey: "test-key",
+    fetchImpl: async () => new Response("temporarily unavailable", { status: 503 }),
+  });
+  assert.equal(result.action, "list_markets");
+  assert.equal(result.source, "deterministic");
+});
+
+test("gives the model safe pending-draft context for creation follow-ups", async () => {
+  let requestBody;
+  await parseNaturalLanguageIntent({
+    text: "@sidebar midnight",
+    apiKey: "test-key",
+    pendingMarketDraft: {
+      question: "Will Dan be late?",
+      subjectName: "Dan",
+      hasSubjectPhone: false,
+    },
+    fetchImpl: async (_url, init) => {
+      requestBody = JSON.parse(init.body);
+      return modelResponse({
+        action: "create_market",
+        closeAt: "2026-08-19T04:00:00.000Z",
+        confidence: 0.99,
+      });
+    },
+  });
+  assert.match(requestBody.input[0].content, /Pending market draft/);
+  assert.match(requestBody.input[0].content, /Will Dan be late/);
+  assert.equal(requestBody.input[0].content.includes("subjectPhoneHash"), false);
+});
+
+function modelResponse(overrides) {
+  const value = {
+    action: "unknown",
+    marketNumber: null,
+    side: null,
+    amount: null,
+    question: null,
+    criteria: null,
+    revealAt: null,
+    closeAt: null,
+    resolveAt: null,
+    subjectName: null,
+    subjectPhone: null,
+    confidence: 0.9,
+    clarification: null,
+    ...overrides,
+  };
+  return new Response(
+    JSON.stringify({
+      output: [{
+        type: "message",
+        content: [{ type: "output_text", text: JSON.stringify(value) }],
+      }],
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
