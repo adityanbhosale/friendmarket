@@ -97,6 +97,7 @@ try {
           client,
           hashIdentity,
           sessionSecret,
+          appUrl,
           send: (outbound) => sdk.send(outbound),
           dryRun,
         })
@@ -114,7 +115,7 @@ try {
       const handled = await handleDirectOnboarding(settled);
       if (handled) {
         writeStatus({
-          status: dryRun ? "would_stage_web_link" : "staged_web_link",
+          status: dryRun ? "would_handle_direct_request" : "handled_direct_request",
           eventHash: fingerprint(message.id),
           senderHash: fingerprint(message.participant),
         });

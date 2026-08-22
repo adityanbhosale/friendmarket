@@ -90,21 +90,19 @@ export function JoinForm({
           />
         </Field>
 
-        <Field label="Your email" htmlFor="email" last>
+        <Field label="Your email (optional)" htmlFor="email" last>
           <input
             id="email"
             name="email"
             type="email"
-            required
             maxLength={254}
             autoComplete="email"
             placeholder="you@example.com"
             className={INPUT}
           />
           <p className="mt-2 text-xs text-muted">
-            The first time you join we send your group code, member ID, and
-            recovery code here. The recovery code is stored as a hash, so it
-            can never be sent to you a second time.
+            If provided, Sidebar emails your group code. On first entry it also
+            includes your member ID and one-time recovery code.
           </p>
         </Field>
       </div>

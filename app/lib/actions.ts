@@ -16,7 +16,12 @@ import {
   DbError,
   dbMessage,
 } from "./db";
-import { looksLikeEmail, membershipMail, sendMail } from "./mail";
+import {
+  groupCodeMail,
+  looksLikeEmail,
+  membershipMail,
+  sendMail,
+} from "./mail";
 import { hashPassword, verifyPassword } from "./password";
 import {
   clearWelcomePending,
@@ -206,6 +211,16 @@ async function createGroupImpl(
   if (imessageToken) await markWelcomePending();
   await createSession(created.user_id, created.group_id);
 
+  try {
+    await rpc<void>("set_member_email", {
+      p_group_id: created.group_id,
+      p_user_id: created.user_id,
+      p_email: email,
+    });
+  } catch (err) {
+    console.error("[createGroup] member email persistence failed", err);
+  }
+
   // Last, and never fatal. The group exists either way; a mail outage must not
   // read to the creator as a failed signup. sendMail already swallows its own
   // failures, so this only guards against something unexpected in composing.
@@ -261,12 +276,12 @@ async function joinGroupImpl(
   if (formData.has("imessage_token") && !imessageToken) {
     return { error: "That iMessage setup link is invalid or expired." };
   }
-  if (!linkId || !password || !name || !phoneIdentity || !email) {
+  if (!linkId || !password || !name || !phoneIdentity) {
     return {
-      error: "Group ID, password, phone number, name, and email are all required.",
+      error: "Group ID, password, phone number, and name are required.",
     };
   }
-  if (!looksLikeEmail(email)) {
+  if (email && !looksLikeEmail(email)) {
     return { error: "That email address doesn't look right." };
   }
   if (name.length > 40) {
@@ -369,22 +384,39 @@ async function joinGroupImpl(
     // carries it too, but mail fails quietly and this does not.
     await markWelcomePending();
 
-    // Never fatal, for the same reason as createGroup: they are already in the
-    // group, and a mail outage must not read as a failed join.
+  }
+
+  if (email) {
     try {
-      const mail = membershipMail({
-        role: "member",
-        groupName: group.name,
-        linkId,
-        memberName: name,
-        memberId: entry.user_id,
-        recoveryCode,
+      await rpc<void>("set_member_email", {
+        p_group_id: group.id,
+        p_user_id: entry.user_id,
+        p_email: email,
       });
+    } catch (err) {
+      console.error("[joinGroup] member email persistence failed", err);
+    }
+
+    // Never fatal: group entry is already committed, so mail failure must not
+    // read as a failed sign-in.
+    try {
+      const mail = firstEntry
+        ? membershipMail({
+            role: "member",
+            groupName: group.name,
+            linkId,
+            memberName: name,
+            memberId: entry.user_id,
+            recoveryCode,
+          })
+        : groupCodeMail({ groupName: group.name, linkId, memberName: name });
       await sendMail({ ...mail, to: email });
     } catch (err) {
       console.error("[joinGroup] membership mail failed", err);
     }
-  } else {
+  }
+
+  if (!firstEntry) {
     redirect("/group");
   }
 

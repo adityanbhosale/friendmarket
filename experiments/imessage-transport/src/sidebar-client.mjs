@@ -78,6 +78,24 @@ export function createSidebarClient({
     return membership;
   }
 
+  async function listGroupsForPhone(phoneHash) {
+    const memberships = await select("group_members", {
+      phone_hash: `eq.${phoneHash}`,
+      phone_attached_at: "not.is.null",
+    });
+    const groupIds = [...new Set(memberships.map((row) => row.group_id))];
+    if (groupIds.length === 0) return [];
+    const groups = await select("groups", {
+      id: `in.(${groupIds.join(",")})`,
+      order: "name.asc",
+    });
+    return groups.map((group) => ({
+      groupId: group.id,
+      groupName: group.name,
+      groupCode: group.link_id,
+    }));
+  }
+
   async function resolveImessageBinding(conversationHash, senderHash) {
     const conversation = await selectOne("imessage_conversations", {
       conversation_hash: `eq.${conversationHash}`,
@@ -364,6 +382,7 @@ export function createSidebarClient({
     getMarketByNumber,
     joinMarket,
     leaveMarket,
+    listGroupsForPhone,
     listMarkets,
     openMarket,
     placeBet,

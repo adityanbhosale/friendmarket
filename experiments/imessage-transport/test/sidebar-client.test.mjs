@@ -83,6 +83,35 @@ test("keeps overlapping senders isolated by native conversation", async () => {
   });
 });
 
+test("lists group codes only through the registered phone hash", async () => {
+  const requests = [];
+  const client = createSidebarClient({
+    url: "https://example.supabase.co",
+    key: "test-key",
+    fetchImpl: async (url) => {
+      requests.push(url);
+      const parsed = new URL(url);
+      if (parsed.pathname.endsWith("/group_members")) {
+        assert.equal(parsed.searchParams.get("phone_hash"), `eq.${"h".repeat(64)}`);
+        return json([{ group_id: "group-1" }, { group_id: "group-2" }]);
+      }
+      if (parsed.pathname.endsWith("/groups")) {
+        return json([
+          { id: "group-2", name: "Lake House", link_id: "ABCD-EFGH" },
+          { id: "group-1", name: "Monkey Business", link_id: "K7QM-3XPD" },
+        ]);
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  });
+
+  assert.deepEqual(await client.listGroupsForPhone("h".repeat(64)), [
+    { groupId: "group-2", groupName: "Lake House", groupCode: "ABCD-EFGH" },
+    { groupId: "group-1", groupName: "Monkey Business", groupCode: "K7QM-3XPD" },
+  ]);
+  assert.equal(requests.some((url) => url.includes("%2B1212")), false);
+});
+
 test("stores only setup token and provider hashes", async () => {
   const requests = [];
   const client = createSidebarClient({

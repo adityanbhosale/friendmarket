@@ -21,7 +21,7 @@ export type Group = {
   created_at: string;
   /** The admin. Null for groups opened before the column existed. */
   created_by: string | null;
-  /** Where registration and health mail goes. Not on users.email, which is unique. */
+  /** Where group-administration mail goes. Member mail lives on users.email. */
   admin_email: string | null;
 };
 

@@ -205,3 +205,36 @@ ${
     html,
   };
 }
+
+/** A lightweight reminder for a verified returning member. No bearer recovery
+ * code or shared group password is available or included. */
+export function groupCodeMail(args: {
+  groupName: string;
+  linkId: string;
+  memberName: string;
+}): Mail {
+  const { groupName, linkId, memberName } = args;
+  const joinUrl = `${SITE_URL}/join/${linkId}`;
+  const subject = `${groupName} — group code ${linkId}`;
+  const text = [
+    `Hi ${memberName},`,
+    "",
+    `Your Sidebar group code for ${groupName} is ${linkId}.`,
+    `Open it here: ${joinUrl}`,
+    "",
+    "The shared group password is not included.",
+    "",
+    "— Sidebar",
+  ].join("\n");
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:24px;background:#ffffff;color:#111111;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55">
+  <div style="max-width:560px;margin:0 auto">
+    <p style="margin:0 0 8px;font-size:20px;font-weight:500;letter-spacing:-0.02em">Your Sidebar group code</p>
+    <p style="margin:0 0 24px;color:#666666;font-size:14px">${esc(memberName)} &middot; ${esc(groupName)}</p>
+    <p style="margin:0 0 20px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:24px">${esc(linkId)}</p>
+    <p style="margin:0 0 20px"><a href="${joinUrl}" style="color:#111111;word-break:break-all">Open ${esc(groupName)}</a></p>
+    <p style="margin:0;color:#666666;font-size:13px">The shared group password is not included.</p>
+  </div>
+</body></html>`;
+  return { to: "", subject, text, html };
+}
