@@ -108,6 +108,47 @@ test("stores only setup token and provider hashes", async () => {
   assert.equal(Object.hasOwn(body, "token"), false);
 });
 
+test("stages and claims the web-first iMessage handoff through database RPCs", async () => {
+  const requests = [];
+  const responses = [
+    { group_id: "group-1", user_id: "user-1", group_name: "Monkey Business" },
+    { group_id: "group-1", user_id: "user-1" },
+  ];
+  const client = createSidebarClient({
+    url: "https://example.supabase.co",
+    key: "test-key",
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return json(responses.shift());
+    },
+  });
+
+  const staged = await client.stageImessageWebLink({
+    senderHash: "s".repeat(64),
+    groupLinkId: "K7QM-3XPD",
+    phoneHash: "p".repeat(64),
+    expiresAt: "2026-08-22T20:00:00.000Z",
+  });
+  const claimed = await client.claimImessageWebLink({
+    senderHash: "s".repeat(64),
+    conversationHash: "c".repeat(64),
+  });
+
+  assert.deepEqual(staged, {
+    groupId: "group-1",
+    userId: "user-1",
+    groupName: "Monkey Business",
+  });
+  assert.deepEqual(claimed, {
+    status: "bound",
+    groupId: "group-1",
+    userId: "user-1",
+  });
+  assert.match(requests[0].url, /rpc\/stage_imessage_web_link$/);
+  assert.match(requests[1].url, /rpc\/claim_imessage_web_link$/);
+  assert.equal(JSON.parse(requests[0].init.body).p_group_link_id, "K7QM-3XPD");
+});
+
 test("lists markets only from the bound Sidebar group", async () => {
   const requests = [];
   const client = createSidebarClient({

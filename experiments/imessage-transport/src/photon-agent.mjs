@@ -19,6 +19,7 @@ import {
 import { startSelfMessagePolling } from "./self-test-poller.mjs";
 import { createReplyCircuitBreaker } from "./reply-circuit-breaker.mjs";
 import { fingerprint, normalizePhotonMessage } from "./transport-core.mjs";
+import { createDirectOnboardingHandler } from "./web-onboarding.mjs";
 
 const dryRun = process.env.SIDEBAR_AGENT_DRY_RUN === "1";
 const seen = new Set();
@@ -34,6 +35,12 @@ try {
     ? createImessageIdentityHasher(identitySecret)
     : null;
   const appUrl = process.env.SIDEBAR_APP_URL?.replace(/\/$/, "");
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (identitySecret && !sessionSecret) {
+    throw new Error(
+      "Missing SESSION_SECRET. Use the same value as the Sidebar web deployment for phone identity matching.",
+    );
+  }
 
   const resolveBinding = async (conversationHash, senderHash, raw) => {
     const selfBinding = resolveSelfTestBinding(selfTest, raw.senderId);
@@ -43,6 +50,12 @@ try {
         hashIdentity("conversation", raw.conversationId),
         hashIdentity("sender", raw.senderId),
       );
+      if (persistent.status === "bound") return persistent;
+      const claimed = await client.claimImessageWebLink({
+        conversationHash: hashIdentity("conversation", raw.conversationId),
+        senderHash: hashIdentity("sender", raw.senderId),
+      });
+      if (claimed) return claimed;
       if (persistent.status !== "unbound_group") return persistent;
     }
     return staticBindingResolver(conversationHash, senderHash);
@@ -78,6 +91,16 @@ try {
   });
   const replyCircuitBreaker = createReplyCircuitBreaker();
   sdk = new IMessageSDK({ maxConcurrentSends: 1 });
+  const handleDirectOnboarding =
+    hashIdentity && sessionSecret
+      ? createDirectOnboardingHandler({
+          client,
+          hashIdentity,
+          sessionSecret,
+          send: (outbound) => sdk.send(outbound),
+          dryRun,
+        })
+      : async () => false;
 
   const handleSelfMessage = async (message) => {
     const settled = await settleMessageConversation(sdk, message);
@@ -86,6 +109,17 @@ try {
   };
 
   await sdk.startWatching({
+    onDirectMessage: async (message) => {
+      const settled = await settleMessageRouting(sdk, message);
+      const handled = await handleDirectOnboarding(settled);
+      if (handled) {
+        writeStatus({
+          status: dryRun ? "would_stage_web_link" : "staged_web_link",
+          eventHash: fingerprint(message.id),
+          senderHash: fingerprint(message.participant),
+        });
+      }
+    },
     onGroupMessage: async (message) => {
       if (!isAgentInvocation(message.text ?? "")) return;
       const settled = await settleMessageRouting(sdk, message);

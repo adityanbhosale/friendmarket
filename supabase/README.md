@@ -27,6 +27,8 @@ Apply not-yet-run files from `migrations/` in numeric order:
 | `008_group_admin.sql` | Group administrator/email, backfill, and atomic admin-aware creation |
 | `009_seal_totals_in_sql.sql` | Seal legacy aggregate views at the database boundary |
 | `010_optional_imessage_links.sql` | Optional iMessage bindings and expiring browser setup links |
+| `011`–`015` | Adjudicators, member phone identity, persistent login reuse, and legacy identity repairs |
+| `016_web_first_imessage_onboarding.sql` | Verified website-to-iMessage group handoff |
 
 Migration 006 intentionally aborts if existing native markets violate
 `reveal_at < close_at < resolve_at`. Repair those rows explicitly before retrying;

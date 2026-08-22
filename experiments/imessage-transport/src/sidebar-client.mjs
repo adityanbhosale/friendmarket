@@ -111,6 +111,38 @@ export function createSidebarClient({
     });
   }
 
+  async function stageImessageWebLink({
+    senderHash,
+    groupLinkId,
+    phoneHash,
+    expiresAt,
+  }) {
+    const result = await rpc("stage_imessage_web_link", {
+      p_sender_hash: senderHash,
+      p_group_link_id: groupLinkId,
+      p_phone_hash: phoneHash,
+      p_expires_at: expiresAt,
+    });
+    return {
+      groupId: result.group_id,
+      userId: result.user_id,
+      groupName: result.group_name,
+    };
+  }
+
+  async function claimImessageWebLink({ senderHash, conversationHash }) {
+    const result = await rpc("claim_imessage_web_link", {
+      p_sender_hash: senderHash,
+      p_conversation_hash: conversationHash,
+    });
+    if (!result) return null;
+    return {
+      status: "bound",
+      groupId: result.group_id,
+      userId: result.user_id,
+    };
+  }
+
   async function listMarkets(groupId, userId) {
     const markets = await select("markets", {
       group_id: `eq.${groupId}`,
@@ -278,6 +310,7 @@ export function createSidebarClient({
 
   return {
     createImessageSetup,
+    claimImessageWebLink,
     getMarketByNumber,
     joinMarket,
     leaveMarket,
@@ -287,6 +320,7 @@ export function createSidebarClient({
     requireMembership,
     resolveImessageBinding,
     resolveMarket,
+    stageImessageWebLink,
   };
 }
 

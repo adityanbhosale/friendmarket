@@ -13,6 +13,7 @@ import {
 import { signOut } from "../lib/actions";
 import { RecoveryCodeForm } from "./recovery-code-form";
 import { PhoneIdentityForm } from "./phone-identity-form";
+import { ImessageOnboarding } from "./imessage-onboarding";
 
 export const metadata: Metadata = { title: "Your group — Sidebar" };
 
@@ -30,6 +31,7 @@ export default async function GroupPage() {
   ]);
   const joinedMarkets = markets.filter((market) => market.joined);
   const availableMarkets = markets.filter((market) => !market.joined);
+  const sidebarNumber = normalizeSidebarNumber(process.env.SIDEBAR_IMESSAGE_NUMBER);
 
   return (
     <main className="flex-1">
@@ -80,6 +82,13 @@ export default async function GroupPage() {
 
             <RecoveryCodeForm hasCode={Boolean(user.recovery_code_hash)} />
 
+            {membership.phone_attached_at && (
+              <ImessageOnboarding
+                groupCode={group.link_id}
+                sidebarNumber={sidebarNumber}
+              />
+            )}
+
             <form action={signOut}>
               <button
                 type="submit"
@@ -127,6 +136,12 @@ export default async function GroupPage() {
       </Shell>
     </main>
   );
+}
+
+function normalizeSidebarNumber(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed || !/^\+\d{8,15}$/.test(trimmed)) return null;
+  return trimmed;
 }
 
 function MarketSection({

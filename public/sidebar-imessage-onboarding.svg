@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980" role="img" aria-labelledby="title description">
+  <title id="title">Sidebar iMessage onboarding</title>
+  <desc id="description">An iMessage conversation where a member starts Sidebar and receives instructions to add it to a group chat.</desc>
+  <rect width="1200" height="980" rx="72" fill="#0a0a0a"/>
+  <rect x="32" y="32" width="1136" height="916" rx="50" fill="#1c1c1e" stroke="#343438" stroke-width="2"/>
+  <path d="M92 102l-22 22 22 22" fill="none" stroke="#0a84ff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="600" cy="112" r="36" fill="#f2f2f7"/>
+  <text x="600" y="122" fill="#111" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="29" font-weight="700" text-anchor="middle">S</text>
+  <text x="600" y="178" fill="#f5f5f7" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="27" font-weight="600" text-anchor="middle">Sidebar</text>
+  <text x="600" y="220" fill="#8e8e93" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="21" text-anchor="middle">iMessage</text>
+  <line x1="32" y1="254" x2="1168" y2="254" stroke="#343438" stroke-width="2"/>
+
+  <g>
+    <rect x="394" y="344" width="704" height="116" rx="46" fill="#0a84ff"/>
+    <path d="M1088 424c10 25 23 36 39 43-27 2-48-3-62-16z" fill="#0a84ff"/>
+    <text x="434" y="415" fill="#fff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="34">@sidebar start K7QM-3XPD</text>
+  </g>
+
+  <g>
+    <rect x="102" y="534" width="824" height="214" rx="46" fill="#3a3a3c"/>
+    <path d="M112 704c-10 25-23 36-39 43 27 2 48-3 62-16z" fill="#3a3a3c"/>
+    <text x="146" y="602" fill="#fff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="32">
+      <tspan x="146" dy="0">You're all set for Monkey Business.</tspan>
+      <tspan x="146" dy="48">Add me to the iMessage group chat,</tspan>
+      <tspan x="146" dy="48">then send “@sidebar help” there.</tspan>
+    </text>
+  </g>
+
+  <rect x="82" y="840" width="1036" height="74" rx="37" fill="none" stroke="#636366" stroke-width="3"/>
+  <text x="130" y="887" fill="#8e8e93" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="28">iMessage</text>
+</svg>
