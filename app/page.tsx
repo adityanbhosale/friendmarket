@@ -115,17 +115,23 @@ function StaggeredWords({ text }: { text: string }) {
 // about a type of friend, where a real name would be a joke about a person.
 const TAPE = [
   { q: "Will [_____] text their ex before 2am?", p: 71 },
+  { q: "Will [_____] hit the gym once and post about it twice?", p: 84 },
   { q: "Does anyone actually make it to the 8:30am?", p: 12 },
   { q: "Will [_____] change their major again this semester?", p: 44 },
-  { q: "Does the Venmo request get paid inside a week?", p: 23 },
+  { q: "Will [_____] leave the function without telling a soul?", p: 62 },
   { q: "Will [_____] say 'never drinking again' before Sunday?", p: 88 },
+  { q: "Will [_____] hard-launch the situationship this month?", p: 29 },
   { q: "Does the group chat survive the trip?", p: 61 },
   { q: "Will [_____] lose their ID for the third time?", p: 37 },
+  { q: "Will [_____] describe themselves as 'so cooked' before 10am?", p: 76 },
   { q: "Does the thing in the back of the fridge get thrown out this month?", p: 9 },
-  { q: "Will the 'one quiet drink' end after 1am?", p: 79 },
+  { q: "Will [_____] bring up their high school GPA unprompted?", p: 41 },
   { q: "Does [_____] make it to the gym three days running?", p: 18 },
+  { q: "Will [_____] post the photo they swore they'd delete?", p: 47 },
   { q: "Will someone cry at the formal?", p: 66 },
+  { q: "Will [_____] get back with their ex by spring break?", p: 55 },
   { q: "Does anyone remember to cancel the free trial?", p: 14 },
+  { q: "Will [_____] show up to their own party two hours late?", p: 58 },
   { q: "Will [_____] show up to lecture in yesterday's clothes?", p: 52 },
   { q: "Does the group study session involve any studying?", p: 21 },
   { q: "Will [_____] reply 'omw' while still in bed?", p: 93 },
@@ -194,11 +200,11 @@ function TapeRun({ ariaHidden = false }: { ariaHidden?: boolean }) {
  * makes some tower and others vanish.
  */
 const SCHOOLS = [
-  { name: "University of Pennsylvania", src: "/logos/penn-shield.svg", w: 21, h: 24 },
-  { name: "New York University", torch: true, w: 18, h: 18 },
-  { name: "Purdue University", src: "/logos/purdue-p.svg", w: 32, h: 17 },
-  { name: "Stanford University", src: "/logos/stanford.svg", w: 17, h: 26 },
-  { name: "Yale University", src: "/logos/yale.svg", w: 27, h: 28 },
+  { name: "University of Pennsylvania", src: "/logos/penn-shield.svg", w: 30, h: 34 },
+  { name: "New York University", torch: true, w: 26, h: 26 },
+  { name: "Purdue University", src: "/logos/purdue-p.svg", w: 46, h: 25 },
+  { name: "Stanford University", src: "/logos/stanford.svg", w: 25, h: 38 },
+  { name: "Yale University", src: "/logos/yale.svg", w: 38, h: 40 },
 ];
 
 const NYU_VIOLET = "#57068C";
@@ -234,7 +240,7 @@ function SchoolRun({ ariaHidden = false }: { ariaHidden?: boolean }) {
       {SCHOOLS.map((school) => (
         <li
           key={school.name}
-          className="flex h-11 shrink-0 items-center justify-center px-12"
+          className="flex h-[72px] shrink-0 items-center justify-center px-12"
         >
           {school.torch ? (
             <span
@@ -251,7 +257,7 @@ function SchoolRun({ ariaHidden = false }: { ariaHidden?: boolean }) {
                 style={{ width: school.w, height: school.h }}
               />
               <span
-                className="mt-[3px] text-[8px] font-bold tracking-[0.06em]"
+                className="mt-[4px] text-[11px] font-bold tracking-[0.06em]"
                 style={{ color: NYU_VIOLET }}
               >
                 NYU
